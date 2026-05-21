@@ -4,16 +4,16 @@ Use this folder for your 10-day learning plan.
 
 ## Day-wise folders
 
-- `day-01-instant-duration`
-- `day-02-map-set`
-- `day-03-comparator`
-- `day-04-enum-behavior`
-- `day-05-model-separation`
-- `day-06-pojo-discipline`
-- `day-07-requirements-assumptions`
-- `day-08-pseudocode-flow`
-- `day-09-interview-narration`
-- `day-10-p1-attempt-2`
+- `day_01_instant_duration`
+- `day_02_map_set`
+- `day_03_comparator`
+- `day_04_enum_behavior`
+- `day_05_model_separation`
+- `day_06_pojo_discipline`
+- `day_07_requirements_assumptions`
+- `day_08_pseudocode_flow`
+- `day_09_interview_narration`
+- `day_10_p1_attempt_2`
 
 ## Inside each day
 
