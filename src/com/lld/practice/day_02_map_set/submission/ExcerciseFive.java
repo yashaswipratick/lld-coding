@@ -1,10 +1,7 @@
 package com.lld.practice.day_02_map_set.submission;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /*
  * ============================================================
@@ -35,8 +32,36 @@ import java.util.List;
 public class ExcerciseFive {
 
     public static List<String> trendingCoursesByUniqueUsers(List<ViewEvent> events, Instant now) {
-        // TODO: Implement with two Map<String, Set<String>> windows, compare unique sizes, sort output
-        throw new UnsupportedOperationException("TODO: implement trendingCoursesByUniqueUsers");
+        Instant sevenDaysAgo = now.minus(7, java.time.temporal.ChronoUnit.DAYS);
+        Instant fourteenDaysAgo = now.minus(14, java.time.temporal.ChronoUnit.DAYS);
+
+        Map<String, Set<String>> recentUniqueUsers = new HashMap<>();
+        Map<String, Set<String>> previousUniqueUsers = new HashMap<>();
+
+        // Step 1: Populate both maps by checking which window each event falls into
+        for (ViewEvent event : events) {
+            if (event.getViewedAt().isAfter(sevenDaysAgo) && !event.getViewedAt().isAfter(now)) {
+                // Recent window: (now-7d, now]
+                recentUniqueUsers.computeIfAbsent(event.getCourseId(), k -> new HashSet<>()).add(event.getUserId());
+            } else if (event.getViewedAt().isAfter(fourteenDaysAgo) && !event.getViewedAt().isAfter(sevenDaysAgo)) {
+                // Previous window: (now-14d, now-7d]
+                previousUniqueUsers.computeIfAbsent(event.getCourseId(), k -> new HashSet<>()).add(event.getUserId());
+            }
+        }
+
+        // Step 2: Compare unique user counts per course — apply 30% threshold
+        List<String> trendingCourses = new ArrayList<>();
+        for (String courseId : recentUniqueUsers.keySet()) {
+            int recentCount   = recentUniqueUsers.get(courseId).size();
+            int previousCount = previousUniqueUsers.getOrDefault(courseId, Collections.emptySet()).size();
+            if (recentCount > previousCount * 1.3) {
+                trendingCourses.add(courseId);
+            }
+        }
+
+        // Step 3: Sort alphabetically and return
+        Collections.sort(trendingCourses);
+        return trendingCourses;
     }
 
     public static void main(String[] args) {
