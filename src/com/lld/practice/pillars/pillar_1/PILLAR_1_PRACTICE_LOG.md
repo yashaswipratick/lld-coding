@@ -349,6 +349,9 @@ Q4 [NOT]:   Out of scope — authentication, image/video upload infra,
 | Domain | Always include in NOT-scope | Auth status |
 |---|---|---|
 | Booking systems (hotel, flight, movie) | Payment, notifications | Optional |
+| Library | Payment/fines gateway, OCR for ISBN, reservation queue policy | Optional |
+| Parking lot | Hardware (sensors, gate motors), payment gateway, license-plate OCR | Optional |
+| URL shortener | Custom domains, SSL termination, analytics dashboard, abuse/spam detection | Optional |
 | ATM / Banking / Wallet | Hardware, bank API, fraud | **CORE — not optional** |
 | Vending / POS | Payment gateway, hardware | Often core |
 | KV store / Cache / DB | Persistence to disk, replication, RPC | Optional |
@@ -357,6 +360,21 @@ Q4 [NOT]:   Out of scope — authentication, image/video upload infra,
 | Tournament systems | Matchmaking, leaderboards | Often core |
 | Learning platforms (Coursera-like) | Video CDN, DRM, recommendations | Optional |
 | Social feeds (Twitter/X-like) | Trending algo, media upload, push, spam, ads | Optional |
+| Food delivery | Maps/geo, payment gateway, push notifications, ETA prediction | Optional |
+| E-commerce / Cart | Payment gateway, search ranking, recommendations, fraud | Optional |
+| Chess | UI/rendering, AI engine, ELO/rating, replay/PGN export | Optional |
+| Snake & Ladder | UI/rendering, AI opponent, network multiplayer | Optional |
+| Elevator | Hardware (motors, sensors), emergency call, voice announce | Optional |
+| Splitwise / Expense | Payment settlement (real money), currency conversion, OCR receipts | Optional |
+| Notification System | Provider integrations (FCM/APNS/Twilio), templating engine, A/B test | Optional |
+| File Storage (Dropbox) | File diff/delta sync, encryption, virus scan, preview generation | Optional |
+| Stock Exchange | Market data feed, regulatory reporting, fraud, settlement clearing | **CORE auth** |
+| Logger | Network sinks, log aggregation/search, retention policy, alerting | Optional |
+| Rate Limiter | Distributed sync (Redis), monitoring/dashboard, dynamic config | Optional |
+| Calendar | Email/SMS reminders, third-party sync (Google/Outlook), timezone DST edge | Optional |
+| Music / Video streaming | CDN/encoding, DRM, recommendations, offline download, ad insertion | Optional (subscription = core) |
+| Airbnb | Maps/geo, payment gateway, identity verification, messaging | Optional |
+| Ride-sharing | Maps/geo, ETA/routing, payment gateway, surge pricing model | Optional |
 
 | Domain | Visible verbs (obvious / mentioned) | Hidden verbs (interviewer expects you to surface) |
 |---|---|---|
@@ -374,6 +392,21 @@ Q4 [NOT]:   Out of scope — authentication, image/video upload infra,
 | Social feed | post, follow, view feed | **like, repost, reply, bookmark**, unfollow, block, mute, edit/delete post, search hashtags, trending, view profile, DM |
 | URL shortener | shorten, redirect | **delete**, set expiry, custom alias, view click count, list user's URLs |
 | Food delivery | place order, track | cancel, refund, rate, order history, reorder, schedule delivery |
+| E-commerce / Cart | browse, add to cart, checkout | **wishlist**, apply coupon, save for later, order history, return/refund, track shipment, write review |
+| Chess | start, move | **resign, draw offer, undo (takeback)**, save/replay (PGN), promote pawn, castling, en-passant, check/checkmate detection |
+| Snake & Ladder | roll dice, move | start game, restart, **detect win**, multi-player turn, view leaderboard |
+| Elevator | call, go to floor | **emergency stop, door open/close, overload alert**, maintenance mode, schedule (express/local) |
+| Splitwise / Expense | add expense, view balance | **settle up**, edit/delete expense, group invite, currency convert, recurring expense, simplify debts |
+| Notification System | send, deliver | **schedule, retry on failure, batch send**, subscribe/unsubscribe, mark read, multi-channel fan-out |
+| File Storage (Dropbox) | upload, download | **share/unshare**, version history, restore, move/rename, search, sync conflict resolve, set permissions |
+| Stock Exchange | place order, view price | **cancel order, modify order**, view order book, view portfolio, market vs limit order, view trade history |
+| Logger | log message | **set log level, add appender/filter**, rotate log file, format message, async flush |
+| Rate Limiter | allow/deny request | **refill bucket, get remaining quota**, configure rule per client, reset, view stats |
+| Calendar | create event | **edit/cancel event**, invite attendees, RSVP, recurring event, set reminder, view by day/week/month, find free slot |
+| Music streaming | play song | **pause/skip/seek, create playlist, add to playlist**, like, search, follow artist, download offline, shuffle, recommendations |
+| Video streaming | play video | **pause/seek, resume from position, add to watchlist**, mark watched, search, browse by genre, download offline, multi-profile |
+| Airbnb | search, book listing | **cancel booking, message host, leave review**, list a property (host side), view booking history, modify dates |
+| Ride-sharing | request ride, track | **cancel ride, rate driver, tip**, schedule ride, choose ride type (pool/premium), view trip history, share ETA |
 
 > **How to read this table:**
 > - **Visible verbs** = mentioned in the problem statement, easy to spot.
