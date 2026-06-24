@@ -1,1684 +1,1057 @@
 # Pillar 2: ENTITIES & CARDINALITY
 
-> **Goal:** Master how to spot the *right* objects and their *right* relationships before writing a single class — in under 60 seconds, on any LLD problem.
+> **Goal:** For any LLD problem, identify the right entities, their relationships, cardinality, and identity — in under 60 seconds — using one repeatable 6-step pattern.
 
 ---
 
-## What it really means
+## The ONE pattern (memorize this, ignore everything else)
 
-Entities are the **nouns** of your system — the things you'll turn into classes. Cardinality is **how many of one entity relate to how many of another**.
-
-The deeper meaning: **the interviewer is testing whether you can spot the right objects and their relationships before writing any code.** Get the entities wrong, and your whole class design collapses.
-
----
-
-## The mental model: "The 4 Gates of Entities"
-
-When you read any problem statement, your brain should fire these 4 gates **in this exact order**:
-
-### Gate 1: NOUNS — What are the core entities?
-**Why this matters:** Each noun usually becomes a class. Miss a noun, miss a class.
-
-The trick: **read the problem statement and underline every noun**, just like you underlined verbs for Scope.
-
-Example: *"Design a library where **users** borrow **books**. Each book has multiple **copies**."*
-
-Visible nouns: `User`, `Book`, `Copy` → 3 classes minimum.
-
-But probe deeper: are there hidden entities the interviewer didn't say?
-- `Library` itself?
-- `Loan` / `Issue` record?
-- `Reservation`?
-
-### Gate 2: RELATIONSHIPS — How do entities connect?
-**Why this matters:** Relationships drive your data structures and method signatures.
-
-For every pair of entities, ask:
-- Does A know about B? Does B know about A? Both?
-- Is the relationship temporary or permanent?
-- Is it ownership, association, or composition?
-
-Example:
-- `User → Book`: a user borrows books (temporary, association)
-- `Book → Copy`: a book has copies (permanent, composition)
-- `User → Loan`: a user creates loans (ownership)
-
-### Gate 3: CARDINALITY — How many of each?
-**Why this matters:** Cardinality tells you which collection to use (`Set`, `List`, `Map`).
-
-For every relationship, ask:
-- 1-to-1? (one user has one profile)
-- 1-to-many? (one user has many loans)
-- many-to-many? (many users borrow many books over time)
-
-Example mappings:
-- 1-to-1 → direct field reference
-- 1-to-many → `List<X>` or `Set<X>` on the parent
-- many-to-many → join entity (`Loan`) or `Map<A, Set<B>>`
-
-### Gate 4: IDENTITY — What uniquely identifies each entity?
-**Why this matters:** Identity becomes the map key, the equals/hashCode contract, the database PK.
-
-For every entity, ask:
-- What field uniquely identifies it?
-- Is identity assigned (UUID) or derived (composite key)?
-- Can identity change over time?
-
-Examples:
-- `User` → `userId` (assigned)
-- `Book` → `isbn` (derived from real world)
-- `Loan` → `loanId` (assigned, system-generated)
-- `Copy` → composite of `bookId + copyNumber`
-
----
-
-## The Entity Question Template (memorize)
-
-After you've nailed scope, fire these 4 questions:
+For every problem, walk these **6 steps in order**:
 
 ```
-Q1: I see entities [list nouns from statement]. Are there hidden ones (e.g., Loan, Reservation, Account)?
-Q2: How do these entities relate? Who owns whom? Is the link temporary or permanent?
-Q3: What's the cardinality between [A] and [B]? 1-to-1, 1-to-many, or many-to-many?
-Q4: What uniquely identifies each entity? Is the ID assigned or derived?
+┌─────────────────────────────────────────────────────────────────┐
+│ Step 1  TIER 1 — STATED      Visible: nouns the interviewer    │
+│                              literally said.                   │
+│                              Hidden: nouns you infer           │
+│                              (transactional / policy / audit)  │
+│                                                                 │
+│ Step 2  TIER 2 — CONTAINER   What physical/logical space has   │
+│                              capacity / position / state?      │
+│                              (Slot, Room, Seat, Cell, Bucket…) │
+│                                                                 │
+│ Step 3  TIER 3 — TRANSACTION What event has timestamp /        │
+│                              status / amount / money?          │
+│                              (Ticket, Loan, Booking, Order…)   │
+│                                                                 │
+│ Step 4  RELATIONSHIPS (4 Q's)                                  │
+│   Q1  Actor → Transaction       (ownership, transactional)     │
+│   Q2  Transaction → Container   (assignment, temporary)        │
+│   Q3  Transaction → Terminal    (Payment/Invoice/Result, 1-1)  │
+│   Q4  Container composition     (Parent → Child, permanent)    │
+│                                                                 │
+│ Step 5  CARDINALITY                                            │
+│   For EVERY entity pair from Steps 1-4: 1-1 / 1-N / N-N        │
+│   ⚠️ Always ask: "1-1 ACTIVE vs 1-N HISTORICAL?"               │
+│                                                                 │
+│ Step 6  IDENTITY                                               │
+│   For EVERY entity from Steps 1-3:                             │
+│   Assigned (system-gen, A) or Derived (natural key, D)?        │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-That's **4 questions in ~45 seconds** — and you've fully covered Pillar 2.
+### The 4 relationship flavors (vocabulary)
 
----
-
-## Worked Example: Watch me think on a problem
-
-**Problem:** *"Design a ride-sharing app like Uber."*
-
-**Step 1 — I read it. My brain underlines nouns: ride, app.**
-
-**Step 2 — Gate 1 (NOUNS):**
-Visible nouns: `Ride`. But Uber clearly has more:
-- `Rider` (passenger)
-- `Driver`
-- `Vehicle`
-- `Trip` (vs Ride request — different things!)
-- `Payment`
-- `Location` / `Coordinates`
-
-I'd ask:
-> *"I see core entities like Rider, Driver, Vehicle, and Trip. Are there others — Payment, Rating, RideRequest as separate from Trip?"*
-
-**Step 3 — Gate 2 (RELATIONSHIPS):**
-- `Rider → Trip`: a rider takes trips (1-to-many)
-- `Driver → Trip`: a driver fulfills trips (1-to-many)
-- `Driver → Vehicle`: a driver owns vehicles (1-to-many) OR drives one at a time (1-to-1 active)?
-- `Trip → Payment`: each trip has one payment (1-to-1)
-
-I'd ask:
-> *"Does a driver own multiple vehicles or just one active at a time? Does a trip always result in a payment, or can it be free/cancelled?"*
-
-**Step 4 — Gate 3 (CARDINALITY):**
-- Rider ↔ Trip: 1-to-many (one rider, many trips over time)
-- Driver ↔ Trip: 1-to-many (same)
-- Trip ↔ Vehicle: many-to-1 (each trip has one vehicle, vehicle has many trips)
-- Rider ↔ Driver: many-to-many (any rider can be matched with any driver)
-
-I'd ask:
-> *"For a single trip, can there be multiple riders (carpool) or always one? Can multiple drivers be assigned to the same trip request before one accepts?"*
-
-**Step 5 — Gate 4 (IDENTITY):**
-- `Rider` → `riderId` (assigned)
-- `Driver` → `driverId` (assigned)
-- `Vehicle` → `licensePlate` (derived) or `vehicleId` (assigned)?
-- `Trip` → `tripId` (assigned)
-
-I'd ask:
-> *"Is vehicle identified by license plate or an internal vehicleId? Is trip ID system-generated or derived from rider+timestamp?"*
-
-**Total time:** ~60 seconds. **Total questions:** 4. **Pillar 2 fully covered.**
-
----
-
-## Why this thinking process works
-
-You don't memorize "what classes does Uber have". You memorize **4 gates**, and the entities + relationships fall out automatically based on the problem.
-
-The same 4 gates apply to:
-- Library system
-- Parking lot
-- Hotel reservation
-- Anything else
-
-**The pillar is the entity-discovery engine. You don't list nouns randomly — you derive them.**
-
----
-
-## Common traps in Pillar 2
-
-### Trap 1: Confusing entity with attribute
-- ❌ "User has an email" — email is an attribute, not an entity
-- ✅ "User has many Addresses" — Address is an entity (has its own ID, lifecycle)
-
-**Rule:** If it has its own identity and lifecycle, it's an entity. Otherwise, it's an attribute.
-
-### Trap 2: Missing the join entity in many-to-many
-- ❌ "User borrows many Books, Book is borrowed by many Users" — and you stop there
-- ✅ Realize you need a `Loan` entity to capture the relationship + metadata (issueDate, returnDate)
-
-**Rule:** Many-to-many relationships often hide a third entity. Look for it.
-
-### Trap 3: Treating snapshots and history as the same entity
-- ❌ "Order has status PENDING/SHIPPED/DELIVERED" — single field
-- ✅ "Order has many StatusEvents over time" — separate entity if history matters
-
-**Rule:** If the interviewer cares about history/audit, you need an event entity.
-
----
-
-## Cardinality → Data Structure Cheatsheet
-
-| Cardinality | Java Choice | Example |
+| Flavor | Meaning | Lifetime |
 |---|---|---|
-| 1-to-1 | direct field | `User.profile : Profile` |
-| 1-to-many | `List<X>` (ordered) or `Set<X>` (unique) | `User.loans : List<Loan>` |
-| many-to-1 | foreign-key field | `Loan.user : User` |
-| many-to-many (no metadata) | `Map<A, Set<B>>` | `bookToUsers : Map<BookId, Set<UserId>>` |
-| many-to-many (with metadata) | join entity | `Loan { user, book, issuedAt, returnedAt }` |
+| **Composition** | Parent contains child (Floor → Slot) | Permanent |
+| **Ownership** | Actor creates record (User → Loan) | Transactional |
+| **Assignment** | Transaction occupies container (Loan → Copy) | Temporary (1-1 active) |
+| **Terminal** | Transaction settles into final (Booking → Payment) | 1-1, fires on close |
 
----
+### Cardinality → Java data structure
 
-## 🟢 BEGINNER FOUNDATION — The 3-Tier Entity Sweep
-
-> **Read this first if entity-spotting feels overwhelming.** Once you internalize this, the per-domain table below becomes obvious instead of memorization.
-
-### The core insight
-
-Most LLD problems hide entities in **3 predictable layers**. For *any* problem, sweep in this exact order:
-
-```
-┌───────────────────────────────────────────────────────────────┐
-│ TIER 1 — STATED            "What words did the interviewer    │
-│  (the obvious actors)       literally say?"                   │
-│                             → Usually: people + the "thing"   │
-│                                                               │
-│ TIER 2 — CONTAINER          "What physical/logical space      │
-│  (capacity / location)      holds or houses something?"       │
-│                             → Has capacity, position, state   │
-│                                                               │
-│ TIER 3 — TRANSACTION        "What event has timestamp,        │
-│  (the receipt / record)     status, amount, or money?"        │
-│                             → Created when actor uses         │
-│                               container; lives, then closes   │
-└───────────────────────────────────────────────────────────────┘
-```
-
-### Why this works (the mental shortcut)
-
-- **Tier 1** = the *who* and *what* (nouns spoken).
-- **Tier 2** = the *where* (the slot/room/seat/cell that gets occupied).
-- **Tier 3** = the *when + how much* (the loan/booking/ticket/order that records the act).
-
-> 90% of LLD problems are: **Actor → uses → Container → producing → Transaction**.
-
-### Worked example — Library (read this slowly)
-
-**Problem:** *"Design a library where users borrow books. Each book has multiple copies."*
-
-| Tier | Question | Answer |
-|---|---|---|
-| **T1 — Stated** | What was literally said? | `User`, `Book`, `Copy` |
-| **T2 — Container** | What physical thing holds/houses something with limited capacity? | `Copy` is the physical object on the shelf (the "container of borrow-ability"). Each copy can be held by **at most one user at a time**. |
-| **T3 — Transaction** | When user takes copy, what record is created with timestamp + status? | `Loan` (issuedAt, dueDate, returnedAt, status). And if the copy is unavailable → `Reservation` (queue with timestamp). Late return → `Fine` (amount). |
-
-**Wiring it together:**
-```
-User  ──borrows──▶  Loan  ──occupies──▶  Copy  (belongs to)  Book
- (T1)               (T3)                  (T2)                 (T1)
-```
-
-That's the whole picture. Same pattern for every domain below.
-
-### How "physical space" applies even when it's not a building
-
-Many people get stuck thinking "container = room/floor only". It's broader:
-
-| Domain | Container (T2) is… | Why it's a "container" |
-|---|---|---|
-| Library | `Copy` | Holds the *state of being borrowable*; capacity = 1 user at a time |
-| Parking lot | `Slot` | Holds 1 vehicle; has location (floor + number) |
-| Hotel | `Room` | Holds 1 reservation per date range |
-| Movie booking | `Seat` | Holds 1 booking per show |
-| Vending machine | `Slot` (A1, B2…) | Holds N units of one item |
-| Elevator | `Floor` (current) + cabin | Cabin holds people; floor is position |
-| ATM | `CashInventory` | Holds notes; has capacity |
-| KV store | `Entry` | Holds 1 value per key |
-| File storage | `Folder` | Holds files (tree structure) |
-| Chat | `Conversation` | Holds messages + participants |
-| Stock exchange | `OrderBook` | Holds buy/sell queues per stock |
-| Calendar | `Event` slot (date+time) | Holds 1 booking on a calendar grid |
-| Rate limiter | `Bucket` | Holds N tokens for a client |
-
-> **Rule of thumb:** A container has **capacity, position, or state** — and only one transaction can "own" it at a time (or N units, in inventory cases).
-
-### The 3-Tier Sweep Applied to All Domains
-
-| Domain | T1 — Stated (actors + thing) | T2 — Container (capacity / location) | T3 — Transaction (timestamp / status / money) |
-|---|---|---|---|
-| Library | `User`, `Book` | `Copy` (1 user at a time) | `Loan`, `Reservation`, `Fine` |
-| Parking lot | `Vehicle`, `ParkingLot` | `Slot` (on `Floor`) | `Ticket`, `Payment` |
-| Hotel | `Guest`, `Hotel` | `Room` (of `RoomType`) | `Reservation`, `Invoice`, `Payment` |
-| Ride-sharing | `Rider`, `Driver` | `Vehicle` (1 driver active) | `RideRequest`, `Trip`, `Payment`, `Rating` |
-| Movie booking | `Movie`, `Theatre` | `Seat` (in `Screen`, per `Show`) | `Hold`, `Booking`, `Payment` |
-| ATM | `User`, `ATM` | `Account`, `Card`, `CashInventory` | `Session`, `Transaction` |
-| KV store | `Key`, `Value` | `Entry` (in `Cache`) | (no money) `ExpiryEvent`, `EvictionEvent` |
-| URL shortener | `LongURL`, `ShortURL` | `ShortLink` (1 alias slot) | `ClickEvent`, `ExpiryPolicy` |
-| Tic-Tac-Toe | `Player` | `Cell` (on `Board`, 1 symbol) | `Move`, `GameResult` |
-| Online learning | `Student`, `Instructor`, `Course` | `Lesson` (slot in course) | `Enrollment`, `Progress`, `Quiz`, `Certificate`, `Payment` |
-| Twitter/X | `User`, `Tweet` | `Feed`/`Timeline` (per user) | `Follow`, `Like`, `Retweet`, `Reply` |
-| Food delivery | `Customer`, `Restaurant`, `MenuItem` | `Cart` (1 active per customer) | `Order`, `OrderStatusEvent`, `Payment` |
-| E-commerce | `User`, `Product` | `Cart`, `Inventory` (per warehouse) | `Order`, `Payment`, `Shipment`, `Discount` |
-| Chess | `Player` | `Cell` (8x8), `Piece` position | `Move`, `GameResult`, `Clock` tick |
-| Snake & Ladder | `Player`, `Dice` | `Cell` (1-100 on `Board`) | `MoveResult`, `GameResult` |
-| Elevator | `Building` | `Elevator` (cabin) at `Floor` | `Request` (queued button press) |
-| Vending Machine | `Item`, `Machine`, `User` | `Slot` (A1, B2 — holds N units) | `Transaction`, `Refund` |
-| Splitwise | `User`, `Group` | (no physical container — `Group` is the logical container) | `Expense`, `Split`, `Settlement`, `Balance` |
-| Notification | `User` | `Channel` (email/SMS/push pipe) | `Notification`, `DeliveryAttempt` |
-| Chat | `User`, `Message` | `Conversation` (holds participants + messages) | `ReadReceipt`, `Attachment` upload |
-| File storage | `User`, `File` | `Folder` (tree), `Quota` (per user) | `Version`, `ShareLink`, `SyncEvent` |
-| Stock exchange | `User`, `Stock` | `OrderBook` (buy queue + sell queue) | `Order`, `Trade`, `Position` snapshot |
-| Logger | (system) | `Appender`/`Sink` (output pipe) | `LogEvent` |
-| Rate limiter | `Client`, `Request` | `Bucket` (per client, N tokens) | `AllowDecision` (with timestamp) |
-| Calendar | `User`, `Event` | `Calendar` (date×time grid) | `Invitee`+`RSVP`, `Reminder` fire |
-| Music streaming | `User`, `Song`, `Artist` | `Playlist` (ordered slot list) | `PlayEvent`, `Subscription` |
-| Video streaming | `User`, `Video` | `Episode` slot in `Season`/`Show` | `WatchHistory`, `Subscription` |
-| Airbnb | `Host`, `Guest`, `Listing` | `Listing` per date (availability calendar) | `Booking`, `Review`, `Payment` |
-| Banking | `Customer` | `Account`, `Card` | `Transaction` (debit/credit), `Statement` |
-
-### How to use this in an interview (15-second drill)
-
-When you hear "Design X", say to yourself:
-1. **"Who/what was named?"** → write Tier 1.
-2. **"Where does the action *land* — what fills up?"** → write Tier 2.
-3. **"What gets recorded with a timestamp/amount/status?"** → write Tier 3.
-
-That's your entity list. Now you can confidently ask the interviewer:
-> *"I see Tier-1 entities `[X, Y]`. I'd model `[Z]` as the container with capacity, and `[W]` as the transaction record with timestamps. Sound right?"*
-
-This single sentence demonstrates senior-level entity thinking.
-
----
-
-## Entity Cheatsheet (Visible vs Hidden, per domain)
-
-> **Visible** = nouns the interviewer literally said in the problem statement.
-> **Hidden** = nouns you must *infer* — usually transactional / relationship / state-history / policy entities.
->
-> **Rule:** Visible alone gets you a 2/4. Hidden ones are where senior candidates score points.
-
-| Domain | Visible entities (stated) | Hidden entities (you must probe) |
-|---|---|---|
-| Library | `User`, `Book`, `Copy` | `Loan`, `Reservation`, `Fine`, `Catalog`, `Librarian` |
-| Parking lot | `Vehicle`, `ParkingLot`, `Floor` | `Slot`, `Ticket`, `Payment`, `Gate`, `RateCard` |
-| Hotel | `Hotel`, `Room`, `Guest` | `Reservation`, `Invoice`, `RoomType`, `Payment`, `Stay` |
-| Ride-sharing | `Rider`, `Driver` | `Trip`, `Vehicle`, `Payment`, `Rating`, `RideRequest`, `Location` |
-| Movie booking | `Movie`, `Theatre`, `Seat` | `Show`, `Booking`, `Hold`, `Payment`, `Screen`, `Pricing` |
-| ATM | `User`, `ATM`, `Money` | `Account`, `Card`, `Transaction`, `Session`, `CashInventory` |
-| KV store | `Key`, `Value` | `Entry`, `EvictionPolicy`, `Snapshot`, `ExpiryPolicy`, `Stats` |
-| URL shortener | `LongURL`, `ShortURL` | `ShortLink`, `Owner`, `ClickEvent`, `ExpiryPolicy`, `Alias` |
-| Tic-Tac-Toe | `Player`, `Board` | `Game`, `Move`, `Cell`, `GameResult`, `Symbol` |
-| Online learning | `Student`, `Course`, `Instructor` | `Enrollment`, `Lesson`, `Progress`, `Quiz`, `Certificate`, `Payment` |
-| Twitter/X | `User`, `Tweet` | `Follow`, `Like`, `Feed`, `Retweet`, `Notification`, `Timeline` |
-| Food delivery | `Customer`, `Restaurant`, `MenuItem` | `Order`, `Cart`, `DeliveryAgent`, `Payment`, `OrderStatusEvent`, `Address` |
-| E-commerce / Cart | `User`, `Product`, `Cart` | `Order`, `Inventory`, `Payment`, `Shipment`, `Discount`, `Review` |
-| Chess | `Player`, `Board`, `Piece` | `Game`, `Move`, `MoveValidator`, `GameResult`, `Clock` |
-| Snake & Ladder | `Player`, `Board`, `Dice` | `Game`, `Snake`, `Ladder`, `Cell`, `MoveResult` |
-| Elevator | `Elevator`, `Floor`, `Building` | `Request`, `Direction`, `DispatchPolicy`, `ElevatorState` |
-| Vending Machine | `Item`, `Machine`, `User` | `Inventory`, `Slot`, `Coin`/`Note`, `Transaction`, `Refund` |
-| Splitwise | `User`, `Group`, `Expense` | `Split`, `Settlement`, `Balance`, `BalanceSheet` |
-| Notification System | `User`, `Notification` | `Channel` (email/SMS/push), `Template`, `Subscription`, `DeliveryAttempt` |
-| Chat / Messaging | `User`, `Message` | `Conversation`, `Group`, `Participant`, `ReadReceipt`, `Attachment` |
-| File Storage (Dropbox) | `User`, `File`, `Folder` | `Version`, `ShareLink`, `Permission`, `SyncEvent`, `Quota` |
-| Stock Exchange | `User`, `Stock`, `Order` | `OrderBook`, `Trade`, `Portfolio`, `Position`, `MatchingEngine` |
-| Logger | `Message` | `LogEvent`, `LogLevel`, `Appender`/`Sink`, `Formatter`, `Filter` |
-| Rate Limiter | `Request`, `Client` | `Bucket`, `Quota`, `Window`, `Rule` |
-| Calendar | `User`, `Event` | `Calendar`, `Invitee`, `RSVP`, `Recurrence`, `Reminder` |
-| Music streaming | `User`, `Song`, `Artist` | `Playlist`, `PlayEvent`, `Subscription`, `Album`, `Recommendation` |
-| Video streaming | `User`, `Video` | `Subscription`, `WatchHistory`, `Recommendation`, `Episode`, `Season` |
-| Airbnb | `Host`, `Guest`, `Listing` | `Booking`, `Review`, `Pricing`, `Availability`, `Payment` |
-| Banking | `Customer`, `Account` | `Transaction`, `Card`, `Loan`, `Beneficiary`, `Statement` |
-
-### How to spot hidden entities (quick filter)
-Ask yourself these 4 questions about each visible entity pair:
-1. **Is there a transaction between them?** → likely hidden entity (`Loan`, `Booking`, `Trip`, `Transaction`).
-2. **Does the relationship carry metadata (timestamp, amount, status)?** → join entity needed (`Enrollment`, `Reservation`).
-3. **Does the system have a policy/rule that varies?** → policy entity (`EvictionPolicy`, `RateCard`, `Pricing`).
-4. **Does history/audit matter?** → event entity (`ClickEvent`, `Move`, `Notification`, `Transaction`).
-
-If yes → that's a hidden entity to call out in clarification.
-
----
-
-
-## 🟢 BEGINNER FOUNDATION — How to *Identify* Relationships (before memorizing them)
-
-> **The problem most beginners face:** they look at the Gate 2 table and feel like the relationships were pulled out of thin air. They weren't. Each one comes from applying **3 simple questions** to the 3-tier entities you already found.
-
-### The 3 questions that uncover every relationship
-
-Once you have your **T1 (actors), T2 (container), T3 (transaction)** entities, walk the data flow:
-
-```
-   ACTOR  ──[Q1: who creates?]──▶  TRANSACTION  ──[Q2: what does it occupy?]──▶  CONTAINER
-                                          │
-                                          └──[Q3: what does it produce/settle?]──▶  TERMINAL ENTITY
-                                                                                    (Payment, Invoice, Rating, Result…)
-```
-
-| # | Question | What it reveals | Relationship type |
-|---|---|---|---|
-| **Q1** | *"Who **creates / owns** the transaction?"* | Actor → Transaction | **Ownership**, transactional, 1-to-N (over time) |
-| **Q2** | *"What container does the transaction **occupy / target**?"* | Transaction → Container | **Assignment**, temporary, 1-to-1 *active* / 1-to-N historical |
-| **Q3** | *"What does the transaction **produce / settle into** at the end?"* | Transaction → Terminal entity | **Lifecycle terminal**, 1-to-1 (Payment, Rating, Invoice, Result) |
-
-> **Bonus Q4 (structural):** *"How is the container itself **composed**?"* → Parent → Child (Building → Floor → Slot). This is **composition**, permanent, 1-to-N.
-
-### Worked example — Library
-
-T1: `User`, `Book` · T2: `Copy` (composes from `Book`) · T3: `Loan` (terminal: `Fine` if late)
-
-| Question | Answer | Relationship |
-|---|---|---|
-| Q1: who creates Loan? | User | `User → Loan` (owns, transactional, 1-N) |
-| Q2: what does Loan occupy? | Copy | `Loan → Copy` (assigns, temporary, 1-1 active) |
-| Q3: what does Loan settle into? | Fine (sometimes) | `Loan → Fine` (terminal, 0..1) |
-| Q4: container composition? | Book has many Copies | `Book → Copy` (composition, permanent, 1-N) |
-
-Notice: you didn't memorize anything. You **derived** all 4 relationships from the entity tiers.
-
-### The 4 Relationship Flavors (vocabulary you'll reuse)
-
-| Flavor | Meaning | When | Lifetime |
-|---|---|---|---|
-| **Composition** | Parent literally *contains* child; child can't exist alone | Container hierarchy (Floor → Slot) | Permanent |
-| **Ownership** | Actor *creates and owns* a record | Actor → Transaction | Transactional |
-| **Assignment** | Transaction *temporarily occupies* a container | Transaction → Container | Temporary (1-1 active) |
-| **Terminal / Settlement** | Transaction *produces* a final record | Transaction → Payment / Result / Invoice | 1-1, fires on close |
-
-### Applying the 3 Questions to All Domains
-
-> **Read this table as:** "Given my T1/T2/T3 entities, here's what Q1/Q2/Q3 produces." This is the *derivation* of the Gate 2 table below.
-
-| Domain | Q1: Actor → Transaction (owns) | Q2: Transaction → Container (occupies) | Q3: Transaction → Terminal (settles) | Q4: Container composition |
-|---|---|---|---|---|
-| Library | `User → Loan` | `Loan → Copy` | `Loan → Fine` (if late) | `Book → Copy` |
-| Parking lot | `Vehicle → Ticket` | `Ticket → Slot` | `Ticket → Payment` | `ParkingLot → Floor → Slot` |
-| Hotel | `Guest → Reservation` | `Reservation → Room` | `Reservation → Invoice/Payment` | `Hotel → Floor → Room` |
-| Ride-sharing | `Rider → RideRequest → Trip` | `Trip → Vehicle` (driver's) | `Trip → Payment + Rating` | `Driver → Vehicle` |
-| Movie booking | `User → Booking` | `Booking → Seat(s)` (per Show) | `Booking → Payment` (via Hold) | `Theatre → Screen → Seat`; `Show = Movie+Screen+Time` |
-| ATM | `Customer → Session → Transaction` | `Transaction → Account` (debits/credits) | `Transaction → Receipt` | `ATM → CashInventory` |
-| KV store | `Client → put/get` (no actor record) | `Entry → Key` (in `Cache`) | `Entry → ExpiryEvent / EvictionEvent` | `Cache → Entry` |
-| URL shortener | `Owner → ShortLink` | `ShortLink → shortCode slot` | `ShortLink → ClickEvent(s)` | (none) |
-| Tic-Tac-Toe | `Player → Move` | `Move → Cell` | `Game → GameResult` | `Board → Cell` (3×3) |
-| Online learning | `Student → Enrollment` | `Enrollment → Course/Lesson` | `Enrollment → Certificate/Payment` | `Course → Lesson` |
-| Twitter/X | `User → Tweet` (and `User → Follow`) | `Tweet → Feed` (of followers) | `Tweet → Like/Reply/Retweet` | (none) |
-| Food delivery | `Customer → Cart → Order` | `Order → Restaurant + DeliveryAgent` | `Order → Payment + OrderStatusEvent(s)` | `Restaurant → MenuItem` |
-| E-commerce | `User → Cart → Order` | `Order → Inventory` (decrements) | `Order → Payment + Shipment` | `Warehouse → Inventory → Product` |
-| Chess | `Player → Move` | `Move → Cell` (from→to) | `Game → GameResult` | `Board → Cell` (8×8) |
-| Snake & Ladder | `Player → MoveResult` (via Dice) | `MoveResult → Cell` | `Game → GameResult` | `Board → Cell` (1-100) |
-| Elevator | `Person → Request` | `Request → Elevator → Floor` | `Request → completed event` | `Building → Elevator(s) + Floor(s)` |
-| Vending Machine | `User → Transaction` | `Transaction → Slot` (decrements count) | `Transaction → Refund?` | `Machine → Slot` |
-| Splitwise | `User → Expense` (in `Group`) | `Expense → Split(s)` (per user) | `Expense → Settlement` (clears Balance) | `Group → User(s)` |
-| Notification | `System → Notification` | `Notification → Channel` (via Subscription) | `Notification → DeliveryAttempt(s)` | `User → Subscription(s)` |
-| Chat | `User → Message` | `Message → Conversation` | `Message → ReadReceipt(s)` | `Conversation → Participant(s)` |
-| File storage | `User → File/Version` | `File → Folder` (path) | `File → ShareLink` (with Permission) | `Folder → File(s)` (tree) |
-| Stock exchange | `User → Order` | `Order → OrderBook` (per Stock) | `Order ⊕ Order → Trade` | `Stock → OrderBook` |
-| Logger | `Code → LogEvent` | `LogEvent → Appender` (via Filter) | `Appender → Formatted output` | `Logger → Appender(s)` |
-| Rate limiter | `Client → Request` | `Request → Bucket` (per Client+Rule) | `Request → AllowDecision` | `Rule → Bucket(s)` |
-| Calendar | `User → Event` | `Event → Calendar slot` (date+time) | `Event → Reminder(s) + RSVP(s)` | `User → Calendar` |
-| Music streaming | `User → PlayEvent` | `PlayEvent → Song` (in Playlist) | `PlayEvent → contributes to Recommendation` | `User → Playlist → Song(s)` |
-| Video streaming | `User → WatchHistory entry` | `WatchHistory → Episode` (in Season/Show) | `WatchHistory → resume position` | `Show → Season → Episode` |
-| Airbnb | `Guest → Booking` | `Booking → Listing` (per date range) | `Booking → Payment + Review(s)` | `Host → Listing(s)` |
-| Banking | `Customer → Transaction` | `Transaction → Account` (debit/credit) | `Transaction → Statement entry` | `Customer → Account → Card` |
-
-### How to use this in an interview (45-second drill)
-
-For *any* domain, after stating Tier 1/2/3 entities, recite:
-1. **"Who owns the transaction?"** → state Q1 (actor → transaction).
-2. **"What container does it occupy?"** → state Q2 (transaction → container, flag *active vs historical*).
-3. **"What does it produce when it closes?"** → state Q3 (transaction → terminal).
-4. **"How's the container composed?"** → state Q4 (parent → child).
-
-You've now identified every key relationship — *without* memorizing the table below. The Gate 2 table is just the *result*; this section is the *recipe*.
-
----
-
-### Per-Domain Derivation Walkthroughs (Relationships + Cardinality)
-
-> **How to use:** For each domain, walk Q1→Q4 and the cardinality follows. Format per domain:
-> - **Q1** (Actor → Transaction): ownership + 1-N over time
-> - **Q2** (Transaction → Container): ⚠️ flag *active* (1-1) vs *historical* (1-N)
-> - **Q3** (Transaction → Terminal): 1-1 settlement
-> - **Q4** (Container composition): 1-N permanent
->
-> *Parking Lot is intentionally skipped — already worked through above. Identity (Gate 4) has its own cheatsheet.*
-
-#### Library
-- **Q1** `User → Loan` — owns, transactional → **1-N** historical
-- **Q2** `Loan → Copy` — assigns, temporary → **1-1 active**, **N-1 historical**
-- **Q3** `Loan → Fine` (if late) — terminal → **0..1**
-- **Q4** `Book → Copy` — composition → **1-N**
-
-#### Hotel
-- **Q1** `Guest → Reservation` → **1-N**
-- **Q2** `Reservation → Room` → **1-1 per date range**, **1-N over time** (need date-range index)
-- **Q3** `Reservation → Invoice/Payment` → **1-1**
-- **Q4** `Hotel → Floor → Room`; `RoomType → Room` → **1-N each**
-
-#### Ride-Sharing
-- **Q1** `Rider → RideRequest → Trip` — state evolution → **1-N** historical, **1-1 active**
-- **Q2** `Trip → Vehicle` — driver's vehicle → **1-1 per trip**, **N-1 historical**
-- **Q3** `Trip → Payment + Rating` — terminal events → **1-1 each**
-- **Q4** `Driver → Vehicle` → **1-1 active** OR **1-N** (clarify)
-
-#### Movie Booking
-- **Q1** `User → Booking` → **1-N**
-- **Q2** `Booking → Seat(s)` per `Show` → **1-N seats per booking**, **1-1 booking per (seat, show)**
-- **Q3** `Booking → Hold → Payment` — lifecycle → **1-1**
-- **Q4** `Theatre → Screen → Seat`; `Show = Movie + Screen + Time` (composite)
-
-#### ATM
-- **Q1** `Customer → Session → Transaction` → **1-N transactions per session**
-- **Q2** `Transaction → Account` (debits/credits) → **N-1**
-- **Q3** `Transaction → Receipt` → **1-1**
-- **Q4** `Customer → Account → Card`; `ATM → CashInventory` → **1-N**
-
-#### KV Store
-- **Q1** Client `put/get` (no actor entity persisted)
-- **Q2** `Entry → Key` (in `Cache`) → **1-N entries in cache**, **1-1 entry per key**
-- **Q3** `Entry → ExpiryEvent / EvictionEvent` → terminal
-- **Q4** `Cache → Entry` → **1-N**; `Cache → EvictionPolicy` → **1-1 strategy**
-
-#### URL Shortener
-- **Q1** `Owner → ShortLink` → **1-N**
-- **Q2** `ShortLink → shortCode` (alias slot) → **1-1**; `LongURL ↔ ShortLink` → **1-1 OR 1-N** (custom alias — clarify)
-- **Q3** `ShortLink → ClickEvent(s)` → **1-N**; `ShortLink → ExpiryPolicy` → **N-1**
-- **Q4** none (flat)
-
-#### Tic-Tac-Toe
-- **Q1** `Player → Move` → **1-N ordered**
-- **Q2** `Move → Cell` → **1-1 per game** (each cell takes 1 symbol)
-- **Q3** `Game → GameResult` → **1-1**
-- **Q4** `Board → Cell` (3×3) → **1-N**; `Game → Player` → **1-2**
-
-#### Online Learning
-- **Q1** `Student → Enrollment` → **1-N**; `Student ↔ Course` = **N-N via Enrollment**
-- **Q2** `Enrollment → Lesson` (tracks) → `Enrollment → Progress` = **1-1 per lesson**
-- **Q3** `Enrollment → Certificate / Payment` → **0..1 / 1-1**
-- **Q4** `Course → Lesson` → **1-N ordered**
-
-#### Twitter/X
-- **Q1** `User → Tweet` → **1-N**; `User → Follow → User` → **N-N self-referential**
-- **Q2** `Tweet → Feed` (of followers) → fan-out, **N-N**
-- **Q3** `Tweet → Like + Reply + Retweet` → **1-N each**
-- **Q4** none (graph-shaped)
-
-#### Food Delivery
-- **Q1** `Customer → Cart → Order` — state evolution → **1-N orders historical**, **1-1 cart active**
-- **Q2** `Order → Restaurant` (N-1); `Order → DeliveryAgent` (N-1 active); `Order ↔ MenuItem` = **N-N via LineItem**
-- **Q3** `Order → Payment + OrderStatusEvent(s)` → **1-1 payment, 1-N events**
-- **Q4** `Restaurant → MenuItem` → **1-N**
-
-#### E-commerce
-- **Q1** `User → Cart → Order` → **1-1 cart active**, **1-N orders**
-- **Q2** `Order → Inventory` (decrements) → **N-N via OrderItem**
-- **Q3** `Order → Payment + Shipment` → **1-1 payment**, **1-N shipments** (split)
-- **Q4** `Warehouse → Inventory → Product` → **1-N each**
-
-#### Chess
-- **Q1** `Player → Move` → **1-N ordered ledger**
-- **Q2** `Move → Cell` (from→to) → **1-1 per move**
-- **Q3** `Game → GameResult` → **1-1**
-- **Q4** `Board → Cell` (8×8); `Board → Piece` → **1-N (max 32)**; `Game → Player` → **1-2**
-
-#### Snake & Ladder
-- **Q1** `Player → MoveResult` (via Dice) → **1-N**
-- **Q2** `MoveResult → Cell` → **N-1**
-- **Q3** `Game → GameResult` → **1-1**
-- **Q4** `Board → Cell` (1-100); `Board → Snake/Ladder` → **1-N each**; `Game → Player` → **1-N**
-
-#### Elevator
-- **Q1** `Person → Request` → **1-N**
-- **Q2** `Request → Elevator → Floor` — assignment → **1-N pending queue**, **1-1 current floor**
-- **Q3** `Request → completed event` → **1-1 terminal**
-- **Q4** `Building → Elevator(s) + Floor(s)` → **1-N each**; `Building → DispatchPolicy` → **1-1**
-
-#### Vending Machine
-- **Q1** `User → Transaction` → **1-N**
-- **Q2** `Transaction → Slot` (decrements count) → **N-1**
-- **Q3** `Transaction → Refund?` → **0..1**
-- **Q4** `Machine → Slot` → **1-N (Map<SlotId, Slot>)**; `Slot → Item + Count` (composite)
-
-#### Splitwise
-- **Q1** `User → Expense` (in `Group`) → **1-N**
-- **Q2** `Expense → Split(s)` (per participant) → **1-N**; `User ↔ User → Balance` = **N-N pair-wise**
-- **Q3** `Expense → Settlement` (clears Balance) → terminal
-- **Q4** `Group → User(s)` = **N-N**; `Group → Expense` → **1-N**
-
-#### Notification
-- **Q1** `System → Notification` → **1-N**
-- **Q2** `Notification → Channel` (via Subscription) → **N-N via Subscription**
-- **Q3** `Notification → DeliveryAttempt(s)` → **1-N retries**
-- **Q4** `User → Subscription(s)`; `Channel → Template` → **1-N**
-
-#### Chat
-- **Q1** `User → Message` → **1-N**
-- **Q2** `Message → Conversation` → **N-1**; `Conversation ↔ User` = **N-N via Participant**
-- **Q3** `Message → ReadReceipt(s)` → **1-N (one per recipient)**
-- **Q4** `Conversation → Message` → **1-N ordered**
-
-#### File Storage
-- **Q1** `User → File / Version` → **1-N owned**, **N-N shared**
-- **Q2** `File → Folder` (path) → **N-1**
-- **Q3** `File → ShareLink → Permission` → composite terminal
-- **Q4** `Folder → File(s)` → **1-N tree**; `File → Version(s)` → **1-N**
-
-#### Stock Exchange
-- **Q1** `User → Order` → **1-N**
-- **Q2** `Order → OrderBook` (per Stock) → **N-1**; `OrderBook → Order(s)` = **1-N buy + 1-N sell queues**
-- **Q3** `Order ⊕ Order → Trade` (matches produce) → **1-N partial fills**
-- **Q4** `Stock → OrderBook` → **1-1**; `User → Position` → **1-N (one per stock)**
-
-#### Logger
-- **Q1** `Code → LogEvent` → **1-N**
-- **Q2** `LogEvent → Appender` (via Filter pipeline) → **N-N via Filter**
-- **Q3** `Appender → Formatted output` → **1-1 via Formatter**
-- **Q4** `Logger → Appender(s)` → **1-N**; `Appender → Filter` → **1-N**
-
-#### Rate Limiter
-- **Q1** `Client → Request` → **1-N**
-- **Q2** `Request → Bucket` (per Client+Rule) → **N-1**; `Client ↔ Bucket` = **1-1 active**
-- **Q3** `Request → AllowDecision` → **1-1**
-- **Q4** `Rule → Bucket(s)` → **1-N**; `Rule → Window + Quota` (composite)
-
-#### Calendar
-- **Q1** `User → Event` → **1-N organized**
-- **Q2** `Event → Calendar slot` (date+time) → **1-1 per slot**; `Event ↔ User` (attendees) = **N-N via Invitee/RSVP**
-- **Q3** `Event → Reminder(s)` → **1-N per user**
-- **Q4** `User → Calendar`; `Event → Recurrence` → **1-1**
-
-#### Music Streaming
-- **Q1** `User → PlayEvent` → **1-N history**
-- **Q2** `PlayEvent → Song` (in Playlist) → **N-1**; `User ↔ Playlist ↔ Song` = **N-N via PlaylistItem**
-- **Q3** `PlayEvent → contributes to Recommendation` → derived
-- **Q4** `User → Playlist → Song(s)` → **1-N → N-N ordered**; `User → Subscription` → **1-1 active**
-
-#### Video Streaming
-- **Q1** `User → WatchHistory entry` → **1-N (one per video)**
-- **Q2** `WatchHistory → Episode` (in Season/Show) → **N-1**
-- **Q3** `WatchHistory → resume position` → **1-1** (snapshot)
-- **Q4** `Show → Season → Episode` → **1-N → 1-N tree**; `User → Subscription` → **1-1 active**
-
-#### Airbnb
-- **Q1** `Guest → Booking` → **1-N**
-- **Q2** `Booking → Listing` (per date range) → **1-N over time, non-overlapping per date**
-- **Q3** `Booking → Payment + Review(s)` → **1-1 payment, 2 reviews (guest + host)**
-- **Q4** `Host → Listing(s)` → **1-N**
-
-#### Banking
-- **Q1** `Customer → Transaction` → **1-N**
-- **Q2** `Transaction → Account` (debit/credit) → **N-1** (or 2-1 for transfer: src + dest)
-- **Q3** `Transaction → Statement entry` → **1-1 ledger entry**
-- **Q4** `Customer → Account` → **1-N or N-N (joint)**; `Account → Card(s) + Beneficiary(s)` → **1-N each**
-
-> **Pattern recap:** every domain follows **Actor → Transaction → Container + Terminal**. Cardinality nuance always lives at Q2 (1-1 *active* vs 1-N *historical*). If you nail Q2's temporal trap, you score senior-level on Gate 3.
-
----
-
-## Gate 2 Cheatsheet — Key Relationships (per domain)
-
-> **How to use:** For each domain, these are the **2–3 most important relationships** you must surface in clarification. Memorize the *shape*, not the words. Each row tells you: who owns whom, and whether the link is permanent or transactional.
-
-| Domain | Key Relationship 1 | Key Relationship 2 | Key Relationship 3 |
-|---|---|---|---|
-| Library | `User → Loan` (owns, transactional) | `Book → Copy` (composition, permanent) | `Loan → Copy` (association, temporary) |
-| Parking lot | `Vehicle → Ticket` (1 active ticket per vehicle) | `Slot → Vehicle` (occupies, temporary) | `Ticket → Payment` (settles, 1-1) |
-| Hotel | `Guest → Reservation` (owns, transactional) | `Reservation → Room` (assigns, temporary) | `Reservation → Invoice` (generates, 1-1) |
-| Ride-sharing | `Rider → RideRequest → Trip` (state evolution) | `Driver → Vehicle` (drives, 1 active) | `Trip → Payment + Rating` (terminal events) |
-| Movie booking | `Show = Movie + Screen + Time` (composite) | `Booking → Seat(s)` (reserves, temporary) | `Booking → Hold → Payment` (lifecycle) |
-| ATM | `Card → Account(s)` (accesses, 1-N) | `Session → Transaction(s)` (contains, 1-N) | `Account → Transaction` (records on, ledger) |
-| KV store | `Entry → Key + Value` (composition) | `Cache → EvictionPolicy` (uses, strategy) | `Entry → ExpiryPolicy` (governed by) |
-| URL shortener | `Owner → ShortLink` (creates, 1-N) | `ShortLink → ClickEvent` (logs, 1-N) | `ShortLink → ExpiryPolicy` (governed by) |
-| Tic-Tac-Toe | `Game → Board` (has, 1-1) | `Game → Move(s)` (records, 1-N ordered) | `Game → GameResult` (terminates with, 1-1) |
-| Online learning | `Student → Enrollment → Course` (join entity) | `Enrollment → Progress` (tracks, 1-1 per lesson) | `Course → Lesson(s)` (composition, ordered) |
-| Twitter/X | `User → Follow → User` (self-referential, N-N) | `User → Tweet(s)` (authors, 1-N) | `Tweet → Like + Reply + Retweet` (engagement, 1-N) |
-| Food delivery | `Customer → Cart → Order` (state evolution) | `Order → DeliveryAgent` (assigned to, N-1) | `Order → OrderStatusEvent(s)` (audit trail, 1-N) |
-| E-commerce | `User → Cart → Order` (state evolution) | `Order → Payment + Shipment` (terminal, 1-1 each) | `Product → Inventory` (per-warehouse, 1-N) |
-| Chess | `Game → Player(s)` (1-2) | `Game → Move(s)` (ordered ledger, 1-N) | `Move → Piece + From + To` (composite VO) |
-| Snake & Ladder | `Game → Player(s)` (1-N) | `Board → Snake(s) + Ladder(s)` (1-N each) | `Game → MoveResult(s)` (history, 1-N) |
-| Elevator | `Building → Elevator(s)` (1-N) | `Elevator → Request(s)` (queue, 1-N) | `Building → DispatchPolicy` (1-1 strategy) |
-| Vending Machine | `Machine → Slot(s)` (composition, 1-N) | `Slot → Item + Count` (composite) | `Transaction → Item + Refund?` (1-1, optional) |
-| Splitwise | `Group → Expense(s)` (1-N) | `Expense → Split(s)` (composition, 1-N per user) | `User ↔ User → Balance` (N-N pair-wise) |
-| Notification | `User → Subscription(s) → Channel` (N-N via join) | `Notification → DeliveryAttempt(s)` (1-N retry) | `Notification → Template` (rendered from, N-1) |
-| Chat | `Conversation → Participant(s)` (N-N via join) | `Conversation → Message(s)` (1-N ordered) | `Message → ReadReceipt(s)` (1-N per user) |
-| File Storage | `User → File/Folder` (owns, tree) | `File → Version(s)` (history, 1-N) | `File → ShareLink → Permission` (composite) |
-| Stock Exchange | `Stock → OrderBook` (1-1) | `OrderBook → Order(s)` (queue, 1-N buy + 1-N sell) | `Order ⊕ Order → Trade` (matches produce, N-N) |
-| Logger | `Logger → Appender(s)` (1-N) | `LogEvent → Filter → Appender` (pipeline) | `Appender → Formatter` (1-1) |
-| Rate Limiter | `Client → Bucket` (1-1 active) | `Bucket → Rule` (governed by, N-1) | `Rule → Window + Quota` (composite) |
-| Calendar | `User → Event(s)` (organizes, 1-N) | `Event → Invitee(s) → RSVP` (N-N via join) | `Event → Recurrence + Reminder(s)` (1-1, 1-N) |
-| Music streaming | `User → Playlist(s) → Song(s)` (N-N via join) | `User → PlayEvent(s)` (history, 1-N) | `User → Subscription` (1-1 active) |
-| Video streaming | `User → WatchHistory → Video` (join with resume pos) | `Show → Season(s) → Episode(s)` (composition tree) | `User → Subscription` (1-1 active) |
-| Airbnb | `Host → Listing(s)` (1-N) | `Guest → Booking → Listing` (N-N via join) | `Booking → Review(s)` (2: guest + host) |
-| Banking | `Customer → Account(s)` (1-N or N-N for joint) | `Account → Transaction(s)` (ledger, 1-N) | `Account → Card(s) + Beneficiary(s)` (1-N each) |
-
-> **Pattern to spot:** "state evolution" chains (Cart → Order → Shipment) and "ledger" relationships (Account → Transaction) appear in *every* transactional system. If you see one, expect both.
-
----
-
-## Gate 3 Cheatsheet — Cardinality (per domain)
-
-> **How to use:** For each domain, these are the cardinality calls you must lock down. Each cell tells you: cardinality + the data structure it implies.
-
-| Domain | Critical cardinality decisions |
+| Cardinality | Java choice |
 |---|---|
-| Library | `User ↔ Loan` = 1-N (`List<Loan>`); `Book ↔ Copy` = 1-N (`List<Copy>`); `Loan ↔ Copy` = 1-1 active, N-1 historical (need `status`) |
-| Parking lot | `Vehicle ↔ Ticket` = 1-1 *active*, 1-N historical; `Slot ↔ Vehicle` = 1-1 active; `Floor ↔ Slot` = 1-N |
-| Hotel | `Guest ↔ Reservation` = 1-N; `Room ↔ Reservation` = 1-N over time, 1-1 per date range; `RoomType ↔ Room` = 1-N |
-| Ride-sharing | `Rider ↔ Trip` = 1-N historical, 1-1 active; `Driver ↔ Vehicle` = 1-1 active OR 1-N if owns multiple; `Trip ↔ Rider` = 1-1 (or 1-N for carpool — clarify) |
-| Movie booking | `Show ↔ Booking` = 1-N; `Booking ↔ Seat` = 1-N (group); `Seat ↔ Show` = 1-1 booking per show (composite key) |
-| ATM | `Customer ↔ Account` = 1-N; `Account ↔ Card` = 1-N (multiple cards per account); `Session ↔ Transaction` = 1-N |
-| KV store | `Cache ↔ Entry` = 1-N (`Map<K,V>`); `Entry ↔ ExpiryPolicy` = N-1; only one EvictionPolicy per cache |
-| URL shortener | `Owner ↔ ShortLink` = 1-N; `LongURL ↔ ShortLink` = 1-1 OR 1-N (custom aliases — clarify); `ShortLink ↔ ClickEvent` = 1-N |
-| Tic-Tac-Toe | `Game ↔ Player` = 1-2 (exactly); `Game ↔ Move` = 1-N ordered; `Cell ↔ Symbol` = 1-1 per game |
-| Online learning | `Student ↔ Course` = N-N (via `Enrollment`); `Course ↔ Lesson` = 1-N ordered; `Enrollment ↔ Progress` = 1-1 per lesson |
-| Twitter/X | `User ↔ Follow ↔ User` = N-N self-referential; `User ↔ Tweet` = 1-N; `Tweet ↔ Like` = 1-N; `User ↔ Feed` = 1-1 |
-| Food delivery | `Customer ↔ Order` = 1-N; `Order ↔ MenuItem` = N-N (via `LineItem`); `Order ↔ DeliveryAgent` = N-1 active |
-| E-commerce | `User ↔ Cart` = 1-1 active; `Cart ↔ Product` = N-N (via `CartItem`); `Order ↔ Shipment` = 1-N (split shipments) |
-| Chess | `Game ↔ Player` = 1-2; `Game ↔ Move` = 1-N ordered ledger; `Board ↔ Piece` = 1-N (max 32) |
-| Snake & Ladder | `Game ↔ Player` = 1-N (typically 2-4); `Board ↔ Snake` = 1-N; `Board ↔ Ladder` = 1-N |
-| Elevator | `Building ↔ Elevator` = 1-N; `Elevator ↔ Request` = 1-N pending queue; `Elevator ↔ Floor` = 1-1 current position |
-| Vending Machine | `Machine ↔ Slot` = 1-N (`Map<SlotId, Slot>`); `Slot ↔ Item` = 1-1 + count; `User ↔ Transaction` = 1-N |
-| Splitwise | `Group ↔ User` = N-N; `Group ↔ Expense` = 1-N; `Expense ↔ Split` = 1-N (one per participant); `User ↔ User Balance` = N-N pair-wise |
-| Notification | `User ↔ Subscription` = N-N (via subscription); `Notification ↔ DeliveryAttempt` = 1-N (retries); `Channel ↔ Template` = 1-N |
-| Chat | `Conversation ↔ User` = N-N via `Participant`; `Conversation ↔ Message` = 1-N ordered; `Message ↔ ReadReceipt` = 1-N (per recipient) |
-| File Storage | `User ↔ File` = 1-N owned, N-N shared; `File ↔ Version` = 1-N; `Folder ↔ File` = 1-N (tree) |
-| Stock Exchange | `Stock ↔ OrderBook` = 1-1; `User ↔ Order` = 1-N; `Order ↔ Trade` = 1-N partial fills; `User ↔ Position` = 1-N (one per stock) |
-| Logger | `Logger ↔ Appender` = 1-N; `Appender ↔ Filter` = 1-N; `Appender ↔ Formatter` = 1-1 |
-| Rate Limiter | `Client ↔ Bucket` = 1-1 active; `API ↔ Rule` = N-1 (many APIs share rule); `Rule ↔ Bucket` = 1-N |
-| Calendar | `User ↔ Event` = 1-N organized, N-N attended (via `Invitee`); `Event ↔ Recurrence` = 1-1; `Event ↔ Reminder` = 1-N per user |
-| Music streaming | `User ↔ Playlist` = 1-N; `Playlist ↔ Song` = N-N ordered; `User ↔ Subscription` = 1-1 active |
-| Video streaming | `Show ↔ Season ↔ Episode` = 1-N → 1-N; `User ↔ WatchHistory` = 1-N (one per video); `User ↔ Profile` = 1-N (multi-profile) |
-| Airbnb | `Host ↔ Listing` = 1-N; `Guest ↔ Booking` = 1-N; `Listing ↔ Booking` = 1-N over time, non-overlapping per date |
-| Banking | `Customer ↔ Account` = 1-N or N-N (joint); `Account ↔ Transaction` = 1-N ledger; `Account ↔ Card` = 1-N |
+| 1-1 | direct field |
+| 1-N | `List<X>` / `Set<X>` |
+| N-1 | foreign-key field |
+| N-N (no metadata) | `Map<A, Set<B>>` |
+| N-N (with metadata) | join entity (`Loan`, `Enrollment`, `Split`) |
 
-> **Critical rule:** "1-1 active" vs "1-N historical" is the most missed cardinality nuance. Always ask: "many at once, or many over time?"
+### Identity rules
+
+- **Derived** ID: stable natural key exists (ISBN, license plate, ticker, SKU).
+- **Assigned** ID: no natural key, or it can change (UUID for Loan, Order, Trip).
+- **Composite** key: appears naturally in join entities (`studentId+courseId`).
+
+> **Consistency rule:** Every entity that appears in Step 1/2/3 MUST appear in Step 6 (identity), and every meaningful pair MUST appear in Step 5 (cardinality). If it's missing — you haven't fully designed it.
 
 ---
 
-## Gate 4 Cheatsheet — Identity (per domain)
+## How to use the per-domain blocks below
 
-> **How to use:** For each entity, identity becomes the map key, equals/hashCode contract, and DB primary key. Each row shows: entity → ID field → assigned (system-generated) vs derived (composite/natural key).
+Each domain has **one block** with all 6 steps filled in:
 
-| Domain | Entity → ID (assigned `A` / derived `D`) |
-|---|---|
-| Library | `User → userId (A)`; `Book → isbn (D)`; `Copy → bookId+copyNumber (D)`; `Loan → loanId (A)` |
-| Parking lot | `Vehicle → licensePlate (D)`; `Slot → floorId+slotNumber (D)`; `Ticket → ticketId (A)`; `Payment → paymentId (A)` |
-| Hotel | `Guest → guestId (A)`; `Room → roomNumber (D)`; `Reservation → reservationId (A)`; `Invoice → invoiceId (A)` |
-| Ride-sharing | `Rider → riderId (A)`; `Driver → driverId (A)`; `Vehicle → vehicleId (A) or licensePlate (D)`; `Trip → tripId (A)` |
-| Movie booking | `Movie → movieId (A)`; `Show → movieId+screenId+startTime (D)`; `Seat → showId+row+col (D)`; `Booking → bookingId (A)` |
-| ATM | `Customer → customerId (A)`; `Account → accountNumber (A)`; `Card → cardNumber (A)`; `Transaction → txnId (A)`; `Session → sessionId (A)` |
-| KV store | `Entry → key (D, user-supplied)`; cache itself is singleton |
-| URL shortener | `ShortLink → shortCode (A or D for custom alias)`; `Owner → userId (A)`; `ClickEvent → eventId (A)` |
-| Tic-Tac-Toe | `Game → gameId (A)`; `Player → playerId (A)`; `Move → gameId+sequenceNumber (D)`; `Cell → row+col (D)` |
-| Online learning | `Student → studentId (A)`; `Course → courseId (A)`; `Lesson → courseId+lessonNumber (D)`; `Enrollment → studentId+courseId (D) or enrollmentId (A)` |
-| Twitter/X | `User → userId (A) or handle (D)`; `Tweet → tweetId (A)`; `Follow → followerId+followeeId (D)`; `Like → userId+tweetId (D)` |
-| Food delivery | `Customer → customerId (A)`; `Restaurant → restaurantId (A)`; `Order → orderId (A)`; `MenuItem → restaurantId+itemId (D)` |
-| E-commerce | `User → userId (A)`; `Product → productId (A) or SKU (D)`; `Cart → userId (D, 1-1)`; `Order → orderId (A)` |
-| Chess | `Game → gameId (A)`; `Player → playerId (A)`; `Move → gameId+moveNumber (D)`; `Piece → gameId+pieceId (D)` |
-| Snake & Ladder | `Game → gameId (A)`; `Player → playerId (A)`; `Cell → cellNumber (D, 1-100)` |
-| Elevator | `Elevator → elevatorId (A)`; `Floor → floorNumber (D)`; `Request → requestId (A)`; `Building → buildingId (A)` |
-| Vending Machine | `Machine → machineId (A)`; `Slot → slotCode (D, e.g., A1, B2)`; `Item → itemId (A) or barcode (D)`; `Transaction → txnId (A)` |
-| Splitwise | `User → userId (A)`; `Group → groupId (A)`; `Expense → expenseId (A)`; `Split → expenseId+userId (D)`; `Settlement → settlementId (A)` |
-| Notification | `User → userId (A)`; `Notification → notificationId (A)`; `Subscription → userId+topic+channel (D)`; `Template → templateId (A)` |
-| Chat | `User → userId (A)`; `Conversation → conversationId (A)`; `Message → messageId (A)`; `ReadReceipt → messageId+userId (D)` |
-| File Storage | `User → userId (A)`; `File → fileId (A)`; `Version → fileId+versionNumber (D)`; `ShareLink → token (A, opaque)` |
-| Stock Exchange | `User → userId (A)`; `Stock → ticker (D, e.g., AAPL)`; `Order → orderId (A)`; `Trade → tradeId (A)`; `Position → userId+ticker (D)` |
-| Logger | `LogEvent → eventId (A) or implicit (no ID needed)`; `Appender → appenderName (D)`; `Logger → loggerName (D, hierarchical)` |
-| Rate Limiter | `Bucket → clientId+ruleId (D)`; `Rule → ruleId (A)`; `Client → apiKey or IP (D)` |
-| Calendar | `User → userId (A)`; `Event → eventId (A)`; `Invitee → eventId+userId (D)`; `Recurrence → eventId (D, 1-1)` |
-| Music streaming | `User → userId (A)`; `Song → songId (A)`; `Playlist → playlistId (A)`; `Artist → artistId (A)`; `PlayEvent → eventId (A)` |
-| Video streaming | `User → userId (A)`; `Video → videoId (A)`; `Episode → showId+seasonNum+episodeNum (D)`; `WatchHistory → userId+videoId (D)` |
-| Airbnb | `Host → hostId (A)`; `Listing → listingId (A)`; `Booking → bookingId (A)`; `Review → reviewId (A)` |
-| Banking | `Customer → customerId (A)`; `Account → accountNumber (A)`; `Card → cardNumber (A)`; `Transaction → txnId (A)`; `Beneficiary → customerId+accountNumber (D)` |
-
-> **Identity rules of thumb:**
-> - **Use derived IDs** when the natural key is stable & unique (ISBN, license plate, ticker, SKU, handle).
-> - **Use assigned IDs** when no natural key exists, or when the natural key can change (email, name).
-> - **Composite keys** appear naturally in *join entities* (Enrollment, Like, ReadReceipt, Split).
-> - **Opaque tokens** (ShareLink token, sessionId) are assigned but designed to be unguessable — clarify if security matters.
-
----
-
-## 🟢 Per-Domain Walkthroughs (4-Step Pattern)
-
-> **How to use:** For each domain, apply the same 4 steps in order. This is the *full drill* — Tiers → Relationships → Cardinality → Identity. Mimic this pattern in interviews.
->
-> **Pattern (memorize):**
-> 1. **3-Tier Sweep** — T1 (stated) · T2 (container) · T3 (transaction)
-> 2. **Relationships** — Q1 owns · Q2 occupies · Q3 settles · Q4 composes
-> 3. **Cardinality** — flag *active vs historical* (1-1 active / 1-N historical)
-> 4. **Identity** — assigned (A) vs derived (D)
-
----
-
-### 🅛 Library
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`, `Book`
-- T2: `Copy` (1 user at a time)
-- T3: `Loan`, `Reservation`, `Fine`
-
-**Step 2 — Relationships**
-- Q1 owns: `User → Loan`
-- Q2 occupies: `Loan → Copy`
-- Q3 settles: `Loan → Fine` (if late)
-- Q4 composes: `Book → Copy`
-
-**Step 3 — Cardinality**
-- `User ↔ Loan` = 1-N historical
-- `Copy ↔ Loan` = 1-1 *active*, 1-N historical
-- `Book ↔ Copy` = 1-N
-
-**Step 4 — Identity**
-- `User → userId (A)`, `Book → isbn (D)`, `Copy → bookId+copyNumber (D)`, `Loan → loanId (A)`
-
----
-
-### 🅟 Parking Lot
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Vehicle`, `ParkingLot`
-- T2: `Slot` (on `Floor`)
-- T3: `Ticket`, `Payment`
-
-**Step 2 — Relationships**
-- Q1 owns: `Vehicle → Ticket`
-- Q2 occupies: `Ticket → Slot`
-- Q3 settles: `Ticket → Payment`
-- Q4 composes: `ParkingLot → Floor → Slot`
-
-**Step 3 — Cardinality**
-- `Vehicle ↔ Ticket` = 1-1 active, 1-N historical
-- `Slot ↔ Vehicle` = 1-1 active, 1-N historical
-- `Floor ↔ Slot` = 1-N; `ParkingLot ↔ Floor` = 1-N
-- `Ticket ↔ Payment` = 1-1
-
-**Step 4 — Identity**
-- `ParkingLot → buildingName/lotId (A)`, `Floor → floorNo (D)`, `Slot → floorId+slotNumber (D)`, `Vehicle → licensePlate (D)`, `Ticket → ticketId (A)`, `Payment → paymentId/txnId (A)`
-
----
-
-### 🅗 Hotel
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Guest`, `Hotel`
-- T2: `Room` (of `RoomType`)
-- T3: `Reservation`, `Invoice`, `Payment`
-
-**Step 2 — Relationships**
-- Q1 owns: `Guest → Reservation`
-- Q2 occupies: `Reservation → Room` (per date range)
-- Q3 settles: `Reservation → Invoice → Payment`
-- Q4 composes: `Hotel → Floor → Room`; `RoomType → Room` (1-N)
-
-**Step 3 — Cardinality**
-- `Guest ↔ Reservation` = 1-N
-- `Room ↔ Reservation` = 1-N over time, **1-1 per overlapping date range**
-- `RoomType ↔ Room` = 1-N
-- `Reservation ↔ Invoice` = 1-1
-
-**Step 4 — Identity**
-- `Guest → guestId (A)`, `Room → hotelId+roomNumber (D)`, `Reservation → reservationId (A)`, `Invoice → invoiceId (A)`
-
----
-
-### 🅡 Ride-Sharing
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Rider`, `Driver`
-- T2: `Vehicle` (1 driver active)
-- T3: `RideRequest → Trip`, `Payment`, `Rating`
-
-**Step 2 — Relationships**
-- Q1 owns: `Rider → RideRequest → Trip` (state evolution)
-- Q2 occupies: `Trip → Vehicle`
-- Q3 settles: `Trip → Payment + Rating`
-- Q4 composes: `Driver → Vehicle(s)`
-
-**Step 3 — Cardinality**
-- `Rider ↔ Trip` = 1-N historical, 1-1 active
-- `Driver ↔ Vehicle` = 1-1 active (or 1-N if owns many — clarify)
-- `Trip ↔ Rider` = 1-1 (1-N for carpool — clarify)
-- `Trip ↔ Payment` = 1-1, `Trip ↔ Rating` = 1-2 (rider+driver)
-
-**Step 4 — Identity**
-- `Rider → riderId (A)`, `Driver → driverId (A)`, `Vehicle → vehicleId (A) or licensePlate (D)`, `Trip → tripId (A)`
-
----
-
-### 🅜 Movie Booking
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Movie`, `Theatre`, `User`
-- T2: `Seat` (in `Screen`, per `Show`)
-- T3: `Hold`, `Booking`, `Payment`
-
-**Step 2 — Relationships**
-- Q1 owns: `User → Booking`
-- Q2 occupies: `Booking → Seat(s)` (per Show, via Hold)
-- Q3 settles: `Hold → Booking → Payment`
-- Q4 composes: `Theatre → Screen → Seat`; `Show = Movie + Screen + Time`
-
-**Step 3 — Cardinality**
-- `Show ↔ Booking` = 1-N
-- `Booking ↔ Seat` = 1-N (group)
-- `Seat ↔ Show` = 1-1 booking per show
-- `Booking ↔ Payment` = 1-1
-
-**Step 4 — Identity**
-- `Movie → movieId (A)`, `Show → movieId+screenId+startTime (D)`, `Seat → showId+row+col (D)`, `Booking → bookingId (A)`
-
----
-
-### 🅐 ATM
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Customer`, `ATM`
-- T2: `Account`, `Card`, `CashInventory`
-- T3: `Session`, `Transaction`
-
-**Step 2 — Relationships**
-- Q1 owns: `Customer → Session → Transaction`
-- Q2 occupies: `Transaction → Account` (debit/credit)
-- Q3 settles: `Transaction → Receipt` (audit)
-- Q4 composes: `Customer → Account(s)`; `Account → Card(s)`; `ATM → CashInventory`
-
-**Step 3 — Cardinality**
-- `Customer ↔ Account` = 1-N
-- `Account ↔ Card` = 1-N
-- `Session ↔ Transaction` = 1-N
-- `Account ↔ Transaction` = 1-N (ledger)
-
-**Step 4 — Identity**
-- `Customer → customerId (A)`, `Account → accountNumber (A)`, `Card → cardNumber (A)`, `Session → sessionId (A)`, `Transaction → txnId (A)`
-
----
-
-### 🅚 KV Store
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Key`, `Value`
-- T2: `Entry` (in `Cache`)
-- T3: `ExpiryEvent`, `EvictionEvent`
-
-**Step 2 — Relationships**
-- Q1 owns: `Client → put/get` (no actor record)
-- Q2 occupies: `Entry → Key` slot in Cache
-- Q3 settles: `Entry → ExpiryEvent / EvictionEvent`
-- Q4 composes: `Cache → Entry(s)`; `Cache → EvictionPolicy`
-
-**Step 3 — Cardinality**
-- `Cache ↔ Entry` = 1-N (`Map<K,V>`)
-- `Entry ↔ ExpiryPolicy` = N-1
-- `Cache ↔ EvictionPolicy` = 1-1
-
-**Step 4 — Identity**
-- `Entry → key (D, user-supplied)`; `Cache` = singleton
-
----
-
-### 🅤 URL Shortener
-
-**Step 1 — 3-Tier Sweep**
-- T1: `LongURL`, `ShortURL`, `Owner`
-- T2: `ShortLink` (1 alias slot per code)
-- T3: `ClickEvent`, `ExpiryPolicy`
-
-**Step 2 — Relationships**
-- Q1 owns: `Owner → ShortLink`
-- Q2 occupies: `ShortLink → shortCode` slot (unique)
-- Q3 settles: `ShortLink → ClickEvent(s)`
-- Q4 composes: governed by `ExpiryPolicy`
-
-**Step 3 — Cardinality**
-- `Owner ↔ ShortLink` = 1-N
-- `LongURL ↔ ShortLink` = 1-1 OR 1-N (custom aliases — clarify)
-- `ShortLink ↔ ClickEvent` = 1-N
-
-**Step 4 — Identity**
-- `ShortLink → shortCode (A or D for custom alias)`, `Owner → userId (A)`, `ClickEvent → eventId (A)`
-
----
-
-### 🅣 Tic-Tac-Toe
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Player`
-- T2: `Cell` (3×3 on `Board`)
-- T3: `Move`, `GameResult`
-
-**Step 2 — Relationships**
-- Q1 owns: `Player → Move`
-- Q2 occupies: `Move → Cell` (1 symbol)
-- Q3 settles: `Game → GameResult`
-- Q4 composes: `Game → Board → Cell`
-
-**Step 3 — Cardinality**
-- `Game ↔ Player` = 1-2
-- `Game ↔ Move` = 1-N ordered
-- `Cell ↔ Symbol` = 1-1 per game
-
-**Step 4 — Identity**
-- `Game → gameId (A)`, `Player → playerId (A)`, `Move → gameId+sequenceNumber (D)`, `Cell → row+col (D)`
-
----
-
-### 🅞 Online Learning
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Student`, `Instructor`, `Course`
-- T2: `Lesson` (slot in course)
-- T3: `Enrollment`, `Progress`, `Quiz`, `Certificate`, `Payment`
-
-**Step 2 — Relationships**
-- Q1 owns: `Student → Enrollment`
-- Q2 occupies: `Enrollment → Course/Lesson`
-- Q3 settles: `Enrollment → Certificate + Payment`
-- Q4 composes: `Course → Lesson(s)`
-
-**Step 3 — Cardinality**
-- `Student ↔ Course` = N-N (via `Enrollment`)
-- `Course ↔ Lesson` = 1-N ordered
-- `Enrollment ↔ Progress` = 1-1 per lesson
-
-**Step 4 — Identity**
-- `Student → studentId (A)`, `Course → courseId (A)`, `Lesson → courseId+lessonNumber (D)`, `Enrollment → studentId+courseId (D) or enrollmentId (A)`
-
----
-
-### 🅧 Twitter/X
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`, `Tweet`
-- T2: `Feed` / `Timeline` (per user)
-- T3: `Follow`, `Like`, `Retweet`, `Reply`
-
-**Step 2 — Relationships**
-- Q1 owns: `User → Tweet`; `User → Follow`
-- Q2 occupies: `Tweet → Feed` (of followers)
-- Q3 settles: `Tweet → Like + Reply + Retweet`
-- Q4 composes: `User → Feed` (1-1)
-
-**Step 3 — Cardinality**
-- `User ↔ Follow ↔ User` = N-N self-referential
-- `User ↔ Tweet` = 1-N
-- `Tweet ↔ Like` = 1-N
-- `User ↔ Feed` = 1-1
-
-**Step 4 — Identity**
-- `User → userId (A) or handle (D)`, `Tweet → tweetId (A)`, `Follow → followerId+followeeId (D)`, `Like → userId+tweetId (D)`
-
----
-
-### 🅕 Food Delivery
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Customer`, `Restaurant`, `MenuItem`
-- T2: `Cart` (1 active per customer)
-- T3: `Order`, `OrderStatusEvent`, `Payment`
-
-**Step 2 — Relationships**
-- Q1 owns: `Customer → Cart → Order` (state evolution)
-- Q2 occupies: `Order → Restaurant + DeliveryAgent`
-- Q3 settles: `Order → Payment + OrderStatusEvent(s)`
-- Q4 composes: `Restaurant → MenuItem(s)`
-
-**Step 3 — Cardinality**
-- `Customer ↔ Order` = 1-N
-- `Order ↔ MenuItem` = N-N (via `LineItem`)
-- `Order ↔ DeliveryAgent` = N-1 active
-
-**Step 4 — Identity**
-- `Customer → customerId (A)`, `Restaurant → restaurantId (A)`, `Order → orderId (A)`, `MenuItem → restaurantId+itemId (D)`
-
----
-
-### 🅔 E-commerce / Cart
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`, `Product`
-- T2: `Cart`, `Inventory` (per warehouse)
-- T3: `Order`, `Payment`, `Shipment`, `Discount`
-
-**Step 2 — Relationships**
-- Q1 owns: `User → Cart → Order`
-- Q2 occupies: `Order → Inventory` (decrements)
-- Q3 settles: `Order → Payment + Shipment`
-- Q4 composes: `Warehouse → Inventory → Product`
-
-**Step 3 — Cardinality**
-- `User ↔ Cart` = 1-1 active
-- `Cart ↔ Product` = N-N (via `CartItem`)
-- `Order ↔ Shipment` = 1-N (split shipments)
-
-**Step 4 — Identity**
-- `User → userId (A)`, `Product → productId (A) or SKU (D)`, `Cart → userId (D, 1-1)`, `Order → orderId (A)`
-
----
-
-### 🅒 Chess
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Player`, `Piece`
-- T2: `Cell` (8×8); `Piece` position
-- T3: `Move`, `GameResult`, `Clock` tick
-
-**Step 2 — Relationships**
-- Q1 owns: `Player → Move`
-- Q2 occupies: `Move → Cell` (from→to)
-- Q3 settles: `Game → GameResult`
-- Q4 composes: `Board → Cell` (8×8); `Game → Clock`
-
-**Step 3 — Cardinality**
-- `Game ↔ Player` = 1-2
-- `Game ↔ Move` = 1-N ordered ledger
-- `Board ↔ Piece` = 1-N (max 32)
-
-**Step 4 — Identity**
-- `Game → gameId (A)`, `Player → playerId (A)`, `Move → gameId+moveNumber (D)`, `Piece → gameId+pieceId (D)`
-
----
-
-### 🅢 Snake & Ladder
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Player`, `Dice`
-- T2: `Cell` (1-100 on `Board`)
-- T3: `MoveResult`, `GameResult`
-
-**Step 2 — Relationships**
-- Q1 owns: `Player → MoveResult` (via Dice)
-- Q2 occupies: `MoveResult → Cell`
-- Q3 settles: `Game → GameResult`
-- Q4 composes: `Board → Cell + Snake(s) + Ladder(s)`
-
-**Step 3 — Cardinality**
-- `Game ↔ Player` = 1-N (typically 2-4)
-- `Board ↔ Snake` = 1-N; `Board ↔ Ladder` = 1-N
-- `Game ↔ MoveResult` = 1-N history
-
-**Step 4 — Identity**
-- `Game → gameId (A)`, `Player → playerId (A)`, `Cell → cellNumber (D, 1-100)`
-
----
-
-### 🅔 Elevator
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Building`, `Person`
-- T2: `Elevator` (cabin) at `Floor`
-- T3: `Request` (queued button press)
-
-**Step 2 — Relationships**
-- Q1 owns: `Person → Request`
-- Q2 occupies: `Request → Elevator → Floor`
-- Q3 settles: `Request → completed event`
-- Q4 composes: `Building → Elevator(s) + Floor(s)`; `Building → DispatchPolicy`
-
-**Step 3 — Cardinality**
-- `Building ↔ Elevator` = 1-N
-- `Elevator ↔ Request` = 1-N pending queue
-- `Elevator ↔ Floor` = 1-1 current position
-
-**Step 4 — Identity**
-- `Building → buildingId (A)`, `Elevator → elevatorId (A)`, `Floor → floorNumber (D)`, `Request → requestId (A)`
-
----
-
-### 🅥 Vending Machine
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Item`, `Machine`, `User`
-- T2: `Slot` (A1, B2 — holds N units)
-- T3: `Transaction`, `Refund`
-
-**Step 2 — Relationships**
-- Q1 owns: `User → Transaction`
-- Q2 occupies: `Transaction → Slot` (decrements count)
-- Q3 settles: `Transaction → Refund?` (optional)
-- Q4 composes: `Machine → Slot(s)`
-
-**Step 3 — Cardinality**
-- `Machine ↔ Slot` = 1-N (`Map<SlotId, Slot>`)
-- `Slot ↔ Item` = 1-1 + count
-- `User ↔ Transaction` = 1-N
-
-**Step 4 — Identity**
-- `Machine → machineId (A)`, `Slot → slotCode (D, e.g., A1)`, `Item → itemId (A) or barcode (D)`, `Transaction → txnId (A)`
-
----
-
-### 🅢 Splitwise
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`, `Group`
-- T2: `Group` (logical container)
-- T3: `Expense`, `Split`, `Settlement`, `Balance`
-
-**Step 2 — Relationships**
-- Q1 owns: `User → Expense` (in Group)
-- Q2 occupies: `Expense → Split(s)` (per user)
-- Q3 settles: `Expense → Settlement` (clears Balance)
-- Q4 composes: `Group → User(s)`; `Group → Expense(s)`
-
-**Step 3 — Cardinality**
-- `Group ↔ User` = N-N
-- `Group ↔ Expense` = 1-N
-- `Expense ↔ Split` = 1-N (per participant)
-- `User ↔ User Balance` = N-N pair-wise
-
-**Step 4 — Identity**
-- `User → userId (A)`, `Group → groupId (A)`, `Expense → expenseId (A)`, `Split → expenseId+userId (D)`, `Settlement → settlementId (A)`
-
----
-
-### 🅝 Notification System
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`
-- T2: `Channel` (email/SMS/push pipe)
-- T3: `Notification`, `DeliveryAttempt`
-
-**Step 2 — Relationships**
-- Q1 owns: `System → Notification`
-- Q2 occupies: `Notification → Channel` (via `Subscription`)
-- Q3 settles: `Notification → DeliveryAttempt(s)`
-- Q4 composes: `User → Subscription(s) → Channel`; `Notification → Template`
-
-**Step 3 — Cardinality**
-- `User ↔ Subscription` = N-N
-- `Notification ↔ DeliveryAttempt` = 1-N (retries)
-- `Channel ↔ Template` = 1-N
-
-**Step 4 — Identity**
-- `User → userId (A)`, `Notification → notificationId (A)`, `Subscription → userId+topic+channel (D)`, `Template → templateId (A)`
-
----
-
-### 🅒 Chat / Messaging
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`, `Message`
-- T2: `Conversation` (holds participants + messages)
-- T3: `ReadReceipt`, `Attachment` upload
-
-**Step 2 — Relationships**
-- Q1 owns: `User → Message`
-- Q2 occupies: `Message → Conversation`
-- Q3 settles: `Message → ReadReceipt(s)`
-- Q4 composes: `Conversation → Participant(s)` (N-N via join)
-
-**Step 3 — Cardinality**
-- `Conversation ↔ User` = N-N via `Participant`
-- `Conversation ↔ Message` = 1-N ordered
-- `Message ↔ ReadReceipt` = 1-N (per recipient)
-
-**Step 4 — Identity**
-- `User → userId (A)`, `Conversation → conversationId (A)`, `Message → messageId (A)`, `ReadReceipt → messageId+userId (D)`
-
----
-
-### 🅕 File Storage (Dropbox)
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`, `File`
-- T2: `Folder` (tree); `Quota` (per user)
-- T3: `Version`, `ShareLink`, `SyncEvent`
-
-**Step 2 — Relationships**
-- Q1 owns: `User → File/Version`
-- Q2 occupies: `File → Folder` (path)
-- Q3 settles: `File → ShareLink` (with `Permission`)
-- Q4 composes: `Folder → File(s)` (tree)
-
-**Step 3 — Cardinality**
-- `User ↔ File` = 1-N owned, N-N shared
-- `File ↔ Version` = 1-N
-- `Folder ↔ File` = 1-N
-
-**Step 4 — Identity**
-- `User → userId (A)`, `File → fileId (A)`, `Version → fileId+versionNumber (D)`, `ShareLink → token (A, opaque)`
-
----
-
-### 🅢 Stock Exchange
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`, `Stock`
-- T2: `OrderBook` (buy queue + sell queue per Stock)
-- T3: `Order`, `Trade`, `Position` snapshot
-
-**Step 2 — Relationships**
-- Q1 owns: `User → Order`
-- Q2 occupies: `Order → OrderBook` (per Stock)
-- Q3 settles: `Order ⊕ Order → Trade`
-- Q4 composes: `Stock → OrderBook` (1-1)
-
-**Step 3 — Cardinality**
-- `Stock ↔ OrderBook` = 1-1
-- `User ↔ Order` = 1-N
-- `Order ↔ Trade` = 1-N (partial fills)
-- `User ↔ Position` = 1-N (one per stock)
-
-**Step 4 — Identity**
-- `User → userId (A)`, `Stock → ticker (D, e.g., AAPL)`, `Order → orderId (A)`, `Trade → tradeId (A)`, `Position → userId+ticker (D)`
-
----
-
-### 🅛 Logger
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Message` (system source)
-- T2: `Appender` / `Sink` (output pipe)
-- T3: `LogEvent`
-
-**Step 2 — Relationships**
-- Q1 owns: `Code → LogEvent`
-- Q2 occupies: `LogEvent → Appender` (via `Filter`)
-- Q3 settles: `Appender → Formatted output`
-- Q4 composes: `Logger → Appender(s)` (hierarchical)
-
-**Step 3 — Cardinality**
-- `Logger ↔ Appender` = 1-N
-- `Appender ↔ Filter` = 1-N
-- `Appender ↔ Formatter` = 1-1
-
-**Step 4 — Identity**
-- `LogEvent → eventId (A) or implicit`, `Appender → appenderName (D)`, `Logger → loggerName (D, hierarchical)`
-
----
-
-### 🅡 Rate Limiter
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Client`, `Request`
-- T2: `Bucket` (per client, N tokens)
-- T3: `AllowDecision` (with timestamp)
-
-**Step 2 — Relationships**
-- Q1 owns: `Client → Request`
-- Q2 occupies: `Request → Bucket` (per Client+Rule)
-- Q3 settles: `Request → AllowDecision`
-- Q4 composes: `Rule → Bucket(s)`; `Rule → Window + Quota`
-
-**Step 3 — Cardinality**
-- `Client ↔ Bucket` = 1-1 active
-- `API ↔ Rule` = N-1
-- `Rule ↔ Bucket` = 1-N
-
-**Step 4 — Identity**
-- `Bucket → clientId+ruleId (D)`, `Rule → ruleId (A)`, `Client → apiKey or IP (D)`
-
----
-
-### 🅒 Calendar
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`, `Event`
-- T2: `Calendar` (date×time grid)
-- T3: `Invitee`+`RSVP`, `Reminder` fire
-
-**Step 2 — Relationships**
-- Q1 owns: `User → Event`
-- Q2 occupies: `Event → Calendar slot` (date+time)
-- Q3 settles: `Event → Reminder(s) + RSVP(s)`
-- Q4 composes: `User → Calendar`; `Event → Recurrence`
-
-**Step 3 — Cardinality**
-- `User ↔ Event` = 1-N organized, N-N attended (via `Invitee`)
-- `Event ↔ Recurrence` = 1-1
-- `Event ↔ Reminder` = 1-N per user
-
-**Step 4 — Identity**
-- `User → userId (A)`, `Event → eventId (A)`, `Invitee → eventId+userId (D)`, `Recurrence → eventId (D, 1-1)`
-
----
-
-### 🅜 Music Streaming
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`, `Song`, `Artist`
-- T2: `Playlist` (ordered slot list)
-- T3: `PlayEvent`, `Subscription`
-
-**Step 2 — Relationships**
-- Q1 owns: `User → PlayEvent`; `User → Playlist`
-- Q2 occupies: `PlayEvent → Song` (in Playlist)
-- Q3 settles: `PlayEvent → contributes to Recommendation`
-- Q4 composes: `User → Playlist → Song(s)` (N-N ordered)
-
-**Step 3 — Cardinality**
-- `User ↔ Playlist` = 1-N
-- `Playlist ↔ Song` = N-N ordered
-- `User ↔ Subscription` = 1-1 active
-
-**Step 4 — Identity**
-- `User → userId (A)`, `Song → songId (A)`, `Playlist → playlistId (A)`, `Artist → artistId (A)`, `PlayEvent → eventId (A)`
-
----
-
-### 🅥 Video Streaming (Netflix)
-
-**Step 1 — 3-Tier Sweep**
-- T1: `User`, `Video`
-- T2: `Episode` slot in `Season` / `Show`
-- T3: `WatchHistory`, `Subscription`
-
-**Step 2 — Relationships**
-- Q1 owns: `User → WatchHistory entry`
-- Q2 occupies: `WatchHistory → Episode` (in Season/Show)
-- Q3 settles: `WatchHistory → resume position`
-- Q4 composes: `Show → Season → Episode`
-
-**Step 3 — Cardinality**
-- `Show ↔ Season ↔ Episode` = 1-N → 1-N
-- `User ↔ WatchHistory` = 1-N (one per video)
-- `User ↔ Profile` = 1-N (multi-profile)
-
-**Step 4 — Identity**
-- `User → userId (A)`, `Video → videoId (A)`, `Episode → showId+seasonNum+episodeNum (D)`, `WatchHistory → userId+videoId (D)`
-
----
-
-### 🅐 Airbnb
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Host`, `Guest`, `Listing`
-- T2: `Listing` per date (availability calendar)
-- T3: `Booking`, `Review`, `Payment`
-
-**Step 2 — Relationships**
-- Q1 owns: `Guest → Booking`
-- Q2 occupies: `Booking → Listing` (per date range)
-- Q3 settles: `Booking → Payment + Review(s)`
-- Q4 composes: `Host → Listing(s)`
-
-**Step 3 — Cardinality**
-- `Host ↔ Listing` = 1-N
-- `Guest ↔ Booking` = 1-N
-- `Listing ↔ Booking` = 1-N over time, non-overlapping per date
-- `Booking ↔ Review` = 1-2 (guest + host)
-
-**Step 4 — Identity**
-- `Host → hostId (A)`, `Listing → listingId (A)`, `Booking → bookingId (A)`, `Review → reviewId (A)`
-
----
-
-### 🅑 Banking
-
-**Step 1 — 3-Tier Sweep**
-- T1: `Customer`
-- T2: `Account`, `Card`
-- T3: `Transaction` (debit/credit), `Statement`
-
-**Step 2 — Relationships**
-- Q1 owns: `Customer → Transaction`
-- Q2 occupies: `Transaction → Account` (debit/credit)
-- Q3 settles: `Transaction → Statement entry`
-- Q4 composes: `Customer → Account → Card`; `Account → Beneficiary(s)`
-
-**Step 3 — Cardinality**
-- `Customer ↔ Account` = 1-N or N-N (joint)
-- `Account ↔ Transaction` = 1-N (ledger)
-- `Account ↔ Card` = 1-N
-
-**Step 4 — Identity**
-- `Customer → customerId (A)`, `Account → accountNumber (A)`, `Card → cardNumber (A)`, `Transaction → txnId (A)`, `Beneficiary → customerId+accountNumber (D)`
-
----
-
-## Mini-Check (do this before drills)
-
-**Problem:** *"Design a hotel room reservation system."*
-
-Apply the **4 gates of Entities**. Write **just 4 answers** (one per gate) in 3 minutes.
-
-Format:
 ```
-Gate 1 [NOUNS]: List entities you see + ask about hidden ones
-Gate 2 [RELATIONSHIPS]: Pick 2 key relationships and describe them
-Gate 3 [CARDINALITY]: State cardinality for those 2 relationships
-Gate 4 [IDENTITY]: What uniquely identifies each entity
+DOMAIN
+  Step 1 — T1
+    Visible: …
+    Hidden:  …
+  Step 2 — T2 (Container): …
+  Step 3 — T3 (Transaction): …
+  Step 4 — Relationships (Q1/Q2/Q3/Q4): …
+  Step 5 — Cardinality (every pair): …
+  Step 6 — Identity (every entity): …
+  ⚠️ Trap: …
 ```
 
-Pass criteria: hits all 4 gates, names ≥1 hidden entity, picks correct cardinality.
+---
 
-### Example Reference Answer (Hotel Reservation)
+## DOMAIN BLOCKS
 
-> Use this as a *style template*. Your answer should look this shape — short, gate-tagged, and end with a clarifying question.
+### 1. Library
 
-**Gate 1 [NOUNS]**
-- Visible: `Hotel`, `Room`, `Guest`
-- Hidden I'd probe: `Reservation`, `RoomType`, `Invoice`, `Payment`, `Stay`
-- *Question to interviewer:* *"I see Hotel, Room, and Guest — should I also model `Reservation` as a separate entity holding check-in/check-out + status, and is `RoomType` (Deluxe/Suite) a separate entity for pricing/availability?"*
+- **Step 1 — T1:**
+  - Visible: `User`, `Book`, `Copy`
+  - Hidden: `Loan`, `Reservation`, `Fine`
+- **Step 2 — T2:** `Copy` (1 user at a time on the shelf)
+- **Step 3 — T3:** `Loan` (issuedAt, dueDate, returnedAt); terminal: `Fine` if late; queue: `Reservation`
+- **Step 4 — Relationships:**
+  - Q1 `User → Loan` (owns, transactional)
+  - Q2 `Loan → Copy` (assigns, temporary)
+  - Q3 `Loan → Fine` (terminal, optional)
+  - Q4 `Book → Copy` (composition)
+- **Step 5 — Cardinality:**
+  - `User ↔ Loan` = 1-N
+  - `Book ↔ Copy` = 1-N
+  - `Loan ↔ Copy` = **1-1 active / N-1 historical**
+  - `User ↔ Reservation` = 1-N
+  - `Copy ↔ Reservation` = 1-N (queue)
+  - `Loan ↔ Fine` = 1-1 (optional)
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `Book = isbn (D)`
+  - `Copy = bookId+copyNum (D)`
+  - `Loan = loanId (A)`
+  - `Reservation = reservationId (A)`
+  - `Fine = fineId (A)` or `loanId (D, 1-1)`
+- **⚠️ Trap:** A copy has *many* loans over its lifetime, but only **one active loan** at a time.
 
-**Gate 2 [RELATIONSHIPS]**
-- `Guest → Reservation`: ownership, transactional (guest creates many reservations over time)
-- `Reservation → Room`: assignment, temporary (reservation occupies one room for a date range)
-- *Question to interviewer:* *"Is a reservation always tied to one specific room at booking time, or do we assign room only at check-in?"*
+---
 
-**Gate 3 [CARDINALITY]**
-- `Guest ↔ Reservation` = 1-to-many (`List<Reservation>` per guest)
-- `Room ↔ Reservation` = 1-to-many over time, but **1-to-1 per overlapping date range** (no double-booking)
-- *Question to interviewer:* *"For overlap detection, should I treat `Room ↔ Reservation` as 1-1 active per date — meaning I need a date-range index on rooms?"*
+### 2. Parking Lot
 
-**Gate 4 [IDENTITY]**
-- `Guest → guestId` (assigned, system-generated)
-- `Room → roomNumber` (derived, natural key within hotel)
-- `Reservation → reservationId` (assigned, system-generated)
-- `Hotel → hotelId` (assigned)
-- *Question to interviewer:* *"Is `roomNumber` unique within a hotel, or globally? If multi-hotel, the key becomes composite `hotelId+roomNumber`."*
+- **Step 1 — T1:**
+  - Visible: `Vehicle`, `ParkingLot`, `Floor`
+  - Hidden: `Slot`, `Ticket`, `Payment`, `RateCard`
+- **Step 2 — T2:** `Slot` on `Floor` (holds 1 vehicle)
+- **Step 3 — T3:** `Ticket` (entryTime, exitTime); terminal: `Payment`
+- **Step 4 — Relationships:**
+  - Q1 `Vehicle → Ticket` (owns)
+  - Q2 `Ticket → Slot` (assigns)
+  - Q3 `Ticket → Payment` (terminal, 1-1)
+  - Q4 `ParkingLot → Floor → Slot` (composition)
+- **Step 5 — Cardinality:**
+  - `ParkingLot ↔ Floor` = 1-N
+  - `Floor ↔ Slot` = 1-N
+  - `Vehicle ↔ Ticket` = **1-1 active / 1-N historical**
+  - `Slot ↔ Vehicle` = **1-1 active / 1-N historical**
+  - `Ticket ↔ Payment` = 1-1
+  - `RateCard ↔ Slot` = 1-N (type-based pricing)
+- **Step 6 — Identity:**
+  - `ParkingLot = lotId (A)` or `buildingName (D)`
+  - `Floor = lotId+floorNum (D)`
+  - `Slot = floorId+slotNum (D)`
+  - `Vehicle = licensePlate (D)`
+  - `Ticket = ticketId (A)`
+  - `Payment = paymentId (A)` or `txnId+ticketId (D)`
+  - `RateCard = rateCardId (A)`
+- **⚠️ Trap:** "1 vehicle / 1 ticket" only holds *while parked*. Same vehicle returns daily → many tickets historically.
 
-**Why this scores 4/4:**
-1. ✅ Listed visible + at least 2 hidden entities → Gate 1
-2. ✅ Picked 2 relationships and labeled ownership + temporality → Gate 2
-3. ✅ Stated cardinality + flagged the **temporal nuance** (1-1 active vs 1-N historical) → Gate 3
-4. ✅ Distinguished assigned vs derived IDs and surfaced the composite-key edge case → Gate 4
-5. ✅ Each gate ended with a *clarifying question* — that's how interviewers know you're collaborating, not assuming.
+---
+
+### 3. Hotel
+
+- **Step 1 — T1:**
+  - Visible: `Guest`, `Hotel`, `Room`
+  - Hidden: `Reservation`, `RoomType`, `Invoice`, `Payment`, `Floor`
+- **Step 2 — T2:** `Room` (of `RoomType`); holds 1 reservation per date range
+- **Step 3 — T3:** `Reservation` (checkIn, checkOut, status); terminal: `Invoice`, `Payment`
+- **Step 4 — Relationships:**
+  - Q1 `Guest → Reservation` (owns)
+  - Q2 `Reservation → Room` (assigns)
+  - Q3 `Reservation → Invoice → Payment` (terminal, 1-1 each)
+  - Q4 `Hotel → Floor → Room`; `RoomType → Room` (1-N)
+- **Step 5 — Cardinality:**
+  - `Hotel ↔ Floor` = 1-N
+  - `Floor ↔ Room` = 1-N
+  - `RoomType ↔ Room` = 1-N
+  - `Guest ↔ Reservation` = 1-N
+  - `Room ↔ Reservation` = **1-N over time, 1-1 per date range**
+  - `Reservation ↔ Invoice` = 1-1
+  - `Invoice ↔ Payment` = 1-1
+- **Step 6 — Identity:**
+  - `Hotel = hotelId (A)`
+  - `Floor = hotelId+floorNum (D)`
+  - `Room = hotelId+roomNum (D)`
+  - `RoomType = roomTypeId (A)` or `name (D)`
+  - `Guest = guestId (A)`
+  - `Reservation = reservationId (A)`
+  - `Invoice = invoiceId (A)`
+  - `Payment = paymentId (A)`
+- **⚠️ Trap:** Overlap detection — must enforce 1-1 *per overlapping date range*, not globally.
+
+---
+
+### 4. Ride-Sharing (Uber)
+
+- **Step 1 — T1:**
+  - Visible: `Rider`, `Driver`
+  - Hidden: `Vehicle`, `RideRequest`, `Trip`, `Payment`, `Rating`
+- **Step 2 — T2:** `Vehicle` (1 driver active at a time)
+- **Step 3 — T3:** `RideRequest` → `Trip` (state evolution); terminal: `Payment`, `Rating`
+- **Step 4 — Relationships:**
+  - Q1 `Rider → RideRequest → Trip` (owns)
+  - Q2 `Trip → Vehicle` (assigns)
+  - Q3 `Trip → Payment + Rating` (terminal)
+  - Q4 `Driver → Vehicle` (1 active)
+- **Step 5 — Cardinality:**
+  - `Rider ↔ RideRequest` = 1-N
+  - `Rider ↔ Trip` = **1-N historical, 1-1 active**
+  - `Driver ↔ Trip` = **1-N historical, 1-1 active**
+  - `Driver ↔ Vehicle` = 1-1 active (or 1-N owned)
+  - `Trip ↔ Vehicle` = N-1
+  - `Trip ↔ Payment` = 1-1
+  - `Trip ↔ Rating` = 1-2 (rider rates driver + driver rates rider)
+- **Step 6 — Identity:**
+  - `Rider = riderId (A)`
+  - `Driver = driverId (A)`
+  - `Vehicle = vehicleId (A)` or `licensePlate (D)`
+  - `RideRequest = requestId (A)`
+  - `Trip = tripId (A)`
+  - `Payment = paymentId (A)`
+  - `Rating = tripId+raterId (D)`
+- **⚠️ Trap:** `RideRequest` and `Trip` are often *two* entities (request → accepted → trip).
+
+---
+
+### 5. Movie Booking (BookMyShow)
+
+- **Step 1 — T1:**
+  - Visible: `User`, `Movie`, `Theatre`, `Booking`, `Payment`
+  - Hidden: `Screen`, `Show`, `Seat`, `Hold`
+- **Step 2 — T2:** `Seat` (in `Screen`, per `Show`) — 1 booking per show
+- **Step 3 — T3:** `Hold` → `Booking`; terminal: `Payment`
+- **Step 4 — Relationships:**
+  - Q1 `User → Booking` (owns)
+  - Q2 `Booking → Seat(s)` (assigns, group of N)
+  - Q3 `Booking → Payment` (terminal via Hold)
+  - Q4 `Theatre → Screen → Seat`; `Show = Movie + Screen + Time`
+- **Step 5 — Cardinality:**
+  - `Theatre ↔ Screen` = 1-N
+  - `Screen ↔ Seat` = 1-N
+  - `Movie ↔ Show` = 1-N
+  - `Screen ↔ Show` = 1-N
+  - `User ↔ Booking` = 1-N
+  - `Booking ↔ Seat` = 1-N (group booking)
+  - `Seat ↔ Show` = N-1 (same physical seat reused across shows)
+  - `Seat+Show ↔ Booking` = **1-1 per show**
+  - `Booking ↔ Payment` = 1-1
+  - `Booking ↔ Hold` = 1-1 (transient pre-payment)
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `Movie = movieId (A)`
+  - `Theatre = theatreId (A)` or `name (D)`
+  - `Screen = theatreId+screenNum (D)`
+  - `Show = movieId+screenId+startTime (D)`
+  - `Seat = screenId+row+col (D)` (physical) or `showId+row+col (D)` (per-show)
+  - `Booking = bookingId (A)`
+  - `Payment = txnId (A)` or `txnId+bookingId (D)`
+  - `Hold = holdId (A)` (expires)
+- **⚠️ Trap:** A single physical seat is reused across many shows → key is *per-show*, not global.
+
+---
+
+### 6. ATM
+
+- **Step 1 — T1:**
+  - Visible: `Customer`, `ATM`, `Money`
+  - Hidden: `Account`, `Card`, `Session`, `Transaction`, `CashInventory`
+- **Step 2 — T2:** `Account`, `Card`, `CashInventory`
+- **Step 3 — T3:** `Session` (card-insert → eject); `Transaction` (withdraw/deposit/balance)
+- **Step 4 — Relationships:**
+  - Q1 `Customer → Session → Transaction` (owns)
+  - Q2 `Transaction → Account` (debits/credits)
+  - Q3 `Transaction → Receipt`
+  - Q4 `Customer → Account → Card`; `ATM → CashInventory`
+- **Step 5 — Cardinality:**
+  - `Customer ↔ Account` = 1-N (or N-N for joint)
+  - `Account ↔ Card` = 1-N
+  - `Customer ↔ Session` = 1-N historical, 1-1 active
+  - `Session ↔ Transaction` = 1-N
+  - `Account ↔ Transaction` = 1-N (ledger)
+  - `ATM ↔ CashInventory` = 1-1
+  - `Card ↔ Session` = 1-1 active
+- **Step 6 — Identity:**
+  - `Customer = customerId (A)`
+  - `ATM = atmId (A)`
+  - `Account = accountNumber (A)`
+  - `Card = cardNumber (A)`
+  - `Session = sessionId (A)`
+  - `Transaction = txnId (A)`
+  - `CashInventory = atmId (D, 1-1)`
+- **⚠️ Trap:** Card vs Account is N-N over time but 1-1 per swipe.
+
+---
+
+### 7. KV Store / Cache
+
+- **Step 1 — T1:**
+  - Visible: `Key`, `Value`
+  - Hidden: `Entry`, `Cache`, `EvictionPolicy`, `ExpiryPolicy`
+- **Step 2 — T2:** `Entry` (in `Cache`) — holds 1 value per key
+- **Step 3 — T3:** `ExpiryEvent`, `EvictionEvent` (no money)
+- **Step 4 — Relationships:**
+  - Q1 `Client → put/get` (no actor record)
+  - Q2 `Entry → Key` (1-1)
+  - Q3 `Entry → ExpiryEvent / EvictionEvent`
+  - Q4 `Cache → Entry`; `Cache → EvictionPolicy` (strategy)
+- **Step 5 — Cardinality:**
+  - `Cache ↔ Entry` = 1-N (`Map<K,V>`)
+  - `Entry ↔ Key` = 1-1
+  - `Entry ↔ Value` = 1-1
+  - `Cache ↔ EvictionPolicy` = 1-1
+  - `Entry ↔ ExpiryPolicy` = N-1
+- **Step 6 — Identity:**
+  - `Cache = singleton` (or `cacheName (D)`)
+  - `Entry = key (D, user-supplied)`
+  - `EvictionPolicy = policyName (D)` (LRU/LFU/TTL)
+  - `ExpiryPolicy = policyId (A)` or `ttlSeconds (D)`
+
+---
+
+### 8. URL Shortener
+
+- **Step 1 — T1:**
+  - Visible: `LongURL`, `ShortURL`
+  - Hidden: `ShortLink`, `Owner`, `ClickEvent`, `ExpiryPolicy`, `Alias`
+- **Step 2 — T2:** `ShortLink` (1 alias slot per shortCode)
+- **Step 3 — T3:** `ClickEvent`; policy: `ExpiryPolicy`
+- **Step 4 — Relationships:**
+  - Q1 `Owner → ShortLink` (creates)
+  - Q2 `ShortLink → shortCode slot`
+  - Q3 `ShortLink → ClickEvent(s)`
+  - Q4 (none — flat)
+- **Step 5 — Cardinality:**
+  - `Owner ↔ ShortLink` = 1-N
+  - `LongURL ↔ ShortLink` = 1-1 OR 1-N (if custom aliases allowed)
+  - `ShortLink ↔ ClickEvent` = 1-N
+  - `ShortLink ↔ ExpiryPolicy` = N-1
+- **Step 6 — Identity:**
+  - `Owner = userId (A)`
+  - `LongURL = url string (D)`
+  - `ShortLink = shortCode (A, or D for custom alias)`
+  - `ClickEvent = eventId (A)`
+  - `ExpiryPolicy = policyId (A)`
+
+---
+
+### 9. Tic-Tac-Toe
+
+- **Step 1 — T1:**
+  - Visible: `Player`, `Board`
+  - Hidden: `Game`, `Move`, `Cell`, `GameResult`, `Symbol`
+- **Step 2 — T2:** `Cell` on `Board` (3×3, 1 symbol)
+- **Step 3 — T3:** `Move`; terminal: `GameResult`
+- **Step 4 — Relationships:**
+  - Q1 `Player → Move` (owns)
+  - Q2 `Move → Cell` (assigns, permanent within game)
+  - Q3 `Game → GameResult` (terminal)
+  - Q4 `Board → Cell` (composition, 3×3)
+- **Step 5 — Cardinality:**
+  - `Game ↔ Player` = 1-2 (exactly)
+  - `Game ↔ Board` = 1-1
+  - `Board ↔ Cell` = 1-9
+  - `Game ↔ Move` = 1-N ordered
+  - `Player ↔ Move` = 1-N
+  - `Move ↔ Cell` = 1-1 per game
+  - `Cell ↔ Symbol` = 0..1 per game
+  - `Game ↔ GameResult` = 1-1
+- **Step 6 — Identity:**
+  - `Game = gameId (A)`
+  - `Player = playerId (A)`
+  - `Board = gameId (D, 1-1)`
+  - `Cell = row+col (D)`
+  - `Move = gameId+sequenceNum (D)`
+  - `GameResult = gameId (D, 1-1)`
+  - `Symbol = enum {X, O}`
+
+---
+
+### 10. Online Learning
+
+- **Step 1 — T1:**
+  - Visible: `Student`, `Course`, `Instructor`
+  - Hidden: `Lesson`, `Enrollment`, `Progress`, `Quiz`, `Certificate`, `Payment`
+- **Step 2 — T2:** `Lesson` (slot in course)
+- **Step 3 — T3:** `Enrollment`, `Progress`; terminal: `Certificate`, `Payment`
+- **Step 4 — Relationships:**
+  - Q1 `Student → Enrollment` (owns)
+  - Q2 `Enrollment → Course/Lesson` (assigns)
+  - Q3 `Enrollment → Certificate/Payment`
+  - Q4 `Course → Lesson` (composition, ordered)
+- **Step 5 — Cardinality:**
+  - `Instructor ↔ Course` = 1-N
+  - `Course ↔ Lesson` = 1-N ordered
+  - `Student ↔ Course` = N-N (via `Enrollment`)
+  - `Student ↔ Enrollment` = 1-N
+  - `Enrollment ↔ Progress` = 1-N (one per lesson)
+  - `Lesson ↔ Progress` = 1-N (one per student)
+  - `Enrollment ↔ Certificate` = 1-1 (on completion)
+  - `Enrollment ↔ Payment` = 1-1
+  - `Course ↔ Quiz` = 1-N
+- **Step 6 — Identity:**
+  - `Student = studentId (A)`
+  - `Instructor = instructorId (A)`
+  - `Course = courseId (A)`
+  - `Lesson = courseId+lessonNum (D)`
+  - `Enrollment = studentId+courseId (D)` or `enrollmentId (A)`
+  - `Progress = enrollmentId+lessonId (D)`
+  - `Quiz = quizId (A)`
+  - `Certificate = certificateId (A)`
+  - `Payment = paymentId (A)`
+
+---
+
+### 11. Twitter/X
+
+- **Step 1 — T1:**
+  - Visible: `User`, `Tweet`
+  - Hidden: `Follow`, `Like`, `Retweet`, `Reply`, `Feed`/`Timeline`, `Notification`
+- **Step 2 — T2:** `Feed`/`Timeline` (per user)
+- **Step 3 — T3:** `Follow`, `Like`, `Retweet`, `Reply` (engagement events)
+- **Step 4 — Relationships:**
+  - Q1 `User → Tweet` (authors); `User → Follow` (creates edge)
+  - Q2 `Tweet → Feed` (of followers)
+  - Q3 `Tweet → Like/Reply/Retweet`
+  - Q4 (none)
+- **Step 5 — Cardinality:**
+  - `User ↔ Follow ↔ User` = N-N self-referential
+  - `User ↔ Tweet` = 1-N
+  - `User ↔ Feed` = 1-1
+  - `Tweet ↔ Like` = 1-N
+  - `Tweet ↔ Reply` = 1-N
+  - `Tweet ↔ Retweet` = 1-N
+  - `Feed ↔ Tweet` = N-N (timeline)
+- **Step 6 — Identity:**
+  - `User = userId (A)` or `handle (D)`
+  - `Tweet = tweetId (A)`
+  - `Follow = followerId+followeeId (D)`
+  - `Like = userId+tweetId (D)`
+  - `Retweet = userId+tweetId (D)`
+  - `Reply = replyTweetId (A)` (a Tweet with parentTweetId)
+  - `Feed = userId (D, 1-1)`
+
+---
+
+### 12. Food Delivery (Swiggy/Zomato)
+
+- **Step 1 — T1:**
+  - Visible: `Customer`, `Restaurant`, `MenuItem`
+  - Hidden: `Cart`, `Order`, `DeliveryAgent`, `Payment`, `OrderStatusEvent`, `Address`
+- **Step 2 — T2:** `Cart` (1 active per customer)
+- **Step 3 — T3:** `Order` (with `OrderStatusEvent`s); terminal: `Payment`
+- **Step 4 — Relationships:**
+  - Q1 `Customer → Cart → Order` (state evolution)
+  - Q2 `Order → Restaurant + DeliveryAgent`
+  - Q3 `Order → Payment + OrderStatusEvent(s)`
+  - Q4 `Restaurant → MenuItem` (composition)
+- **Step 5 — Cardinality:**
+  - `Restaurant ↔ MenuItem` = 1-N
+  - `Customer ↔ Cart` = 1-1 active
+  - `Cart ↔ MenuItem` = N-N (via `LineItem`)
+  - `Customer ↔ Order` = 1-N
+  - `Order ↔ MenuItem` = N-N (via `LineItem`)
+  - `Order ↔ DeliveryAgent` = N-1 active
+  - `Order ↔ Payment` = 1-1
+  - `Order ↔ OrderStatusEvent` = 1-N (audit trail)
+  - `Customer ↔ Address` = 1-N
+- **Step 6 — Identity:**
+  - `Customer = customerId (A)`
+  - `Restaurant = restaurantId (A)`
+  - `MenuItem = restaurantId+itemId (D)`
+  - `Cart = customerId (D, 1-1)`
+  - `Order = orderId (A)`
+  - `DeliveryAgent = agentId (A)`
+  - `Payment = paymentId (A)`
+  - `OrderStatusEvent = orderId+seqNum (D)`
+  - `Address = addressId (A)`
+
+---
+
+### 13. E-commerce / Cart
+
+- **Step 1 — T1:**
+  - Visible: `User`, `Product`, `Cart`
+  - Hidden: `Order`, `Inventory`, `Payment`, `Shipment`, `Discount`, `Warehouse`
+- **Step 2 — T2:** `Cart` (1 active), `Inventory` (per warehouse)
+- **Step 3 — T3:** `Order`; terminal: `Payment`, `Shipment`
+- **Step 4 — Relationships:**
+  - Q1 `User → Cart → Order` (state evolution)
+  - Q2 `Order → Inventory` (decrements)
+  - Q3 `Order → Payment + Shipment`
+  - Q4 `Warehouse → Inventory → Product`
+- **Step 5 — Cardinality:**
+  - `User ↔ Cart` = 1-1 active
+  - `Cart ↔ Product` = N-N (via `CartItem`)
+  - `User ↔ Order` = 1-N
+  - `Order ↔ Product` = N-N (via `OrderLineItem`)
+  - `Warehouse ↔ Inventory` = 1-N
+  - `Product ↔ Inventory` = 1-N (per warehouse)
+  - `Order ↔ Payment` = 1-1
+  - `Order ↔ Shipment` = 1-N (split shipments)
+  - `Order ↔ Discount` = N-N
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `Product = productId (A)` or `SKU (D)`
+  - `Cart = userId (D, 1-1)`
+  - `Order = orderId (A)`
+  - `Warehouse = warehouseId (A)`
+  - `Inventory = warehouseId+productId (D)`
+  - `Payment = paymentId (A)`
+  - `Shipment = shipmentId (A)`
+  - `Discount = discountCode (D)` or `discountId (A)`
+
+---
+
+### 14. Chess
+
+- **Step 1 — T1:**
+  - Visible: `Player`, `Board`, `Piece`
+  - Hidden: `Game`, `Move`, `MoveValidator`, `GameResult`, `Clock`, `Cell`
+- **Step 2 — T2:** `Cell` on `Board` (8×8)
+- **Step 3 — T3:** `Move` (from→to, with timestamp); terminal: `GameResult`
+- **Step 4 — Relationships:**
+  - Q1 `Player → Move` (owns)
+  - Q2 `Move → Cell` (from→to)
+  - Q3 `Game → GameResult` (terminal); `Clock` per player
+  - Q4 `Board → Cell` (8×8)
+- **Step 5 — Cardinality:**
+  - `Game ↔ Player` = 1-2
+  - `Game ↔ Board` = 1-1
+  - `Board ↔ Cell` = 1-64
+  - `Game ↔ Move` = 1-N ordered ledger
+  - `Board ↔ Piece` = 1-N (max 32)
+  - `Piece ↔ Cell` = 1-1 (current position)
+  - `Player ↔ Clock` = 1-1 per game
+  - `Game ↔ GameResult` = 1-1
+- **Step 6 — Identity:**
+  - `Game = gameId (A)`
+  - `Player = playerId (A)`
+  - `Board = gameId (D, 1-1)`
+  - `Cell = row+col (D)`
+  - `Piece = gameId+pieceId (D)`
+  - `Move = gameId+moveNum (D)`
+  - `Clock = gameId+playerId (D)`
+  - `GameResult = gameId (D, 1-1)`
+
+---
+
+### 15. Snake & Ladder
+
+- **Step 1 — T1:**
+  - Visible: `Player`, `Board`, `Dice`
+  - Hidden: `Game`, `Snake`, `Ladder`, `Cell`, `MoveResult`, `GameResult`
+- **Step 2 — T2:** `Cell` on `Board` (1-100)
+- **Step 3 — T3:** `MoveResult`; terminal: `GameResult`
+- **Step 4 — Relationships:**
+  - Q1 `Player → MoveResult` (via Dice roll)
+  - Q2 `MoveResult → Cell`
+  - Q3 `Game → GameResult`
+  - Q4 `Board → Cell` + `Snake/Ladder` mappings
+- **Step 5 — Cardinality:**
+  - `Game ↔ Player` = 1-N (2-4 typical)
+  - `Game ↔ Board` = 1-1
+  - `Board ↔ Cell` = 1-100
+  - `Board ↔ Snake` = 1-N
+  - `Board ↔ Ladder` = 1-N
+  - `Game ↔ MoveResult` = 1-N ordered
+  - `Player ↔ Cell` = 1-1 (current position)
+  - `Game ↔ Dice` = 1-1
+  - `Game ↔ GameResult` = 1-1
+- **Step 6 — Identity:**
+  - `Game = gameId (A)`
+  - `Player = playerId (A)`
+  - `Board = gameId (D, 1-1)`
+  - `Cell = cellNumber (D, 1-100)`
+  - `Snake = headCell+tailCell (D)`
+  - `Ladder = bottomCell+topCell (D)`
+  - `MoveResult = gameId+seqNum (D)`
+  - `Dice = gameId (D, 1-1)`
+  - `GameResult = gameId (D, 1-1)`
+
+---
+
+### 16. Elevator
+
+- **Step 1 — T1:**
+  - Visible: `Elevator`, `Floor`, `Building`
+  - Hidden: `Person`, `Request`, `Direction`, `DispatchPolicy`, `ElevatorState`
+- **Step 2 — T2:** `Elevator` (cabin) at `Floor`
+- **Step 3 — T3:** `Request` (button press, queued)
+- **Step 4 — Relationships:**
+  - Q1 `Person → Request` (owns)
+  - Q2 `Request → Elevator → Floor`
+  - Q3 `Request → completed event`
+  - Q4 `Building → Elevator(s) + Floor(s)`; `Building → DispatchPolicy` (strategy)
+- **Step 5 — Cardinality:**
+  - `Building ↔ Elevator` = 1-N
+  - `Building ↔ Floor` = 1-N
+  - `Elevator ↔ Request` = 1-N pending queue
+  - `Elevator ↔ Floor` = 1-1 current position
+  - `Elevator ↔ ElevatorState` = 1-1
+  - `Building ↔ DispatchPolicy` = 1-1 (strategy)
+  - `Request ↔ Floor` = N-1 (source + destination)
+- **Step 6 — Identity:**
+  - `Building = buildingId (A)`
+  - `Elevator = elevatorId (A)`
+  - `Floor = buildingId+floorNum (D)`
+  - `Request = requestId (A)`
+  - `Person = personId (A)` (often anonymous)
+  - `DispatchPolicy = policyName (D)` (SCAN, LOOK, nearest)
+  - `ElevatorState = enum {IDLE, UP, DOWN, MAINTENANCE}`
+
+---
+
+### 17. Vending Machine
+
+- **Step 1 — T1:**
+  - Visible: `Item`, `Machine`, `User`
+  - Hidden: `Slot`, `Inventory`, `Coin`/`Note`, `Transaction`, `Refund`
+- **Step 2 — T2:** `Slot` (A1, B2 — holds N units of 1 item)
+- **Step 3 — T3:** `Transaction`; terminal: `Refund` (optional)
+- **Step 4 — Relationships:**
+  - Q1 `User → Transaction` (owns)
+  - Q2 `Transaction → Slot` (decrements count)
+  - Q3 `Transaction → Refund?`
+  - Q4 `Machine → Slot` (composition)
+- **Step 5 — Cardinality:**
+  - `Machine ↔ Slot` = 1-N
+  - `Slot ↔ Item` = 1-1 + count
+  - `User ↔ Transaction` = 1-N
+  - `Transaction ↔ Slot` = N-1
+  - `Transaction ↔ Refund` = 1-0..1
+  - `Machine ↔ CashInventory (Coin/Note)` = 1-N
+- **Step 6 — Identity:**
+  - `Machine = machineId (A)`
+  - `Slot = machineId+slotCode (D, e.g., A1)`
+  - `Item = itemId (A)` or `barcode (D)`
+  - `User = userId (A)` (often anonymous)
+  - `Transaction = txnId (A)`
+  - `Refund = txnId (D, 1-1)` or `refundId (A)`
+  - `Coin/Note = denomination (D)`
+
+---
+
+### 18. Splitwise
+
+- **Step 1 — T1:**
+  - Visible: `User`, `Group`, `Expense`
+  - Hidden: `Split`, `Settlement`, `Balance`
+- **Step 2 — T2:** `Group` (logical container); `Balance` ledger per (user, user) pair
+- **Step 3 — T3:** `Split` (per-participant share); terminal: `Settlement` (clears Balance)
+- **Step 4 — Relationships:**
+  - Q1 `User → Expense` (in `Group`) (owns)
+  - Q2 `Expense → Split(s)` (per user)
+  - Q3 `Expense → Settlement` (clears Balance pair)
+  - Q4 `Group → User(s)` (N-N); `Expense → Split` (composition)
+- **Step 5 — Cardinality:**
+  - `Group ↔ User` = N-N
+  - `Group ↔ Expense` = 1-N
+  - `User ↔ Expense` = 1-N (paid by)
+  - `Expense ↔ Split` = 1-N (one per participant)
+  - `User ↔ Split` = 1-N
+  - `User ↔ User Balance` = N-N pair-wise
+  - `User ↔ Settlement` = 1-N
+  - `Balance ↔ Settlement` = 1-N (clears history)
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `Group = groupId (A)`
+  - `Expense = expenseId (A)`
+  - `Split = expenseId+userId (D)`
+  - `Settlement = settlementId (A)`
+  - `Balance = fromUserId+toUserId (D)`
+- **⚠️ Trap:** Container isn't physical — it's the `Group`. The "real" container is the per-pair `Balance` ledger that splits accumulate into.
+
+---
+
+### 19. Notification System
+
+- **Step 1 — T1:**
+  - Visible: `User`, `Notification`
+  - Hidden: `Channel` (email/SMS/push), `Template`, `Subscription`, `DeliveryAttempt`
+- **Step 2 — T2:** `Channel` (email/SMS/push pipe)
+- **Step 3 — T3:** `Notification`, `DeliveryAttempt` (retries)
+- **Step 4 — Relationships:**
+  - Q1 `System → Notification` (creates)
+  - Q2 `Notification → Channel` (via `Subscription`)
+  - Q3 `Notification → DeliveryAttempt(s)`
+  - Q4 `User → Subscription(s)` (N-N to topic+channel)
+- **Step 5 — Cardinality:**
+  - `User ↔ Subscription` = 1-N
+  - `Subscription ↔ Channel` = N-1
+  - `User ↔ Channel` = N-N (via `Subscription`)
+  - `Notification ↔ User` = 1-N (recipients)
+  - `Notification ↔ Channel` = 1-N (fan-out)
+  - `Notification ↔ DeliveryAttempt` = 1-N (retries)
+  - `Notification ↔ Template` = N-1
+  - `Channel ↔ Template` = 1-N
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `Notification = notificationId (A)`
+  - `Channel = channelType (D, e.g., EMAIL/SMS/PUSH)` or `channelId (A)`
+  - `Template = templateId (A)`
+  - `Subscription = userId+topic+channelType (D)`
+  - `DeliveryAttempt = notificationId+userId+channel+attemptNum (D)`
+
+---
+
+### 20. Chat / Messaging
+
+- **Step 1 — T1:**
+  - Visible: `User`, `Message`
+  - Hidden: `Conversation`, `Group`, `Participant`, `ReadReceipt`, `Attachment`
+- **Step 2 — T2:** `Conversation` (holds participants + messages)
+- **Step 3 — T3:** `Message`; terminal: `ReadReceipt(s)`, `Attachment` upload
+- **Step 4 — Relationships:**
+  - Q1 `User → Message` (owns)
+  - Q2 `Message → Conversation`
+  - Q3 `Message → ReadReceipt(s)`
+  - Q4 `Conversation → Participant(s)` (N-N via join)
+- **Step 5 — Cardinality:**
+  - `Conversation ↔ User` = N-N (via `Participant`)
+  - `Conversation ↔ Message` = 1-N ordered
+  - `User ↔ Message` = 1-N (sender)
+  - `Message ↔ ReadReceipt` = 1-N (per recipient)
+  - `Message ↔ Attachment` = 1-N
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `Conversation = conversationId (A)`
+  - `Message = messageId (A)`
+  - `Participant = conversationId+userId (D)`
+  - `ReadReceipt = messageId+userId (D)`
+  - `Attachment = attachmentId (A)`
+
+---
+
+### 21. File Storage (Dropbox)
+
+- **Step 1 — T1:**
+  - Visible: `User`, `File`, `Folder`
+  - Hidden: `Version`, `ShareLink`, `Permission`, `SyncEvent`, `Quota`
+- **Step 2 — T2:** `Folder` (tree), `Quota` (per user)
+- **Step 3 — T3:** `Version`, `ShareLink`, `SyncEvent`
+- **Step 4 — Relationships:**
+  - Q1 `User → File/Version` (owns)
+  - Q2 `File → Folder` (path)
+  - Q3 `File → ShareLink + Permission`
+  - Q4 `Folder → File(s)` (tree)
+- **Step 5 — Cardinality:**
+  - `User ↔ File` = 1-N owned, N-N shared
+  - `User ↔ Folder` = 1-N
+  - `Folder ↔ File` = 1-N (tree)
+  - `Folder ↔ Folder` = 1-N (subfolder)
+  - `File ↔ Version` = 1-N
+  - `File ↔ ShareLink` = 1-N
+  - `ShareLink ↔ Permission` = 1-1
+  - `User ↔ Quota` = 1-1
+  - `File ↔ SyncEvent` = 1-N
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `File = fileId (A)`
+  - `Folder = folderId (A)`
+  - `Version = fileId+versionNum (D)`
+  - `ShareLink = token (A, opaque)`
+  - `Permission = shareLinkId (D, 1-1)`
+  - `Quota = userId (D, 1-1)`
+  - `SyncEvent = eventId (A)`
+
+---
+
+### 22. Stock Exchange
+
+- **Step 1 — T1:**
+  - Visible: `User`, `Stock`, `Order`
+  - Hidden: `OrderBook`, `Trade`, `Portfolio`, `Position`, `MatchingEngine`
+- **Step 2 — T2:** `OrderBook` (buy + sell queues per stock)
+- **Step 3 — T3:** `Order`; terminal: `Trade` (when matched), `Position` snapshot
+- **Step 4 — Relationships:**
+  - Q1 `User → Order` (owns)
+  - Q2 `Order → OrderBook` (per Stock)
+  - Q3 `Order ⊕ Order → Trade` (matching produces)
+  - Q4 `Stock → OrderBook` (1-1)
+- **Step 5 — Cardinality:**
+  - `Stock ↔ OrderBook` = 1-1
+  - `OrderBook ↔ Order` = 1-N (buy queue + sell queue)
+  - `User ↔ Order` = 1-N
+  - `Order ↔ Trade` = 1-N (partial fills)
+  - `User ↔ Portfolio` = 1-1
+  - `Portfolio ↔ Position` = 1-N (one per stock)
+  - `Stock ↔ Position` = 1-N
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `Stock = ticker (D, e.g., AAPL)`
+  - `OrderBook = ticker (D, 1-1)`
+  - `Order = orderId (A)`
+  - `Trade = tradeId (A)`
+  - `Portfolio = userId (D, 1-1)`
+  - `Position = userId+ticker (D)`
+  - `MatchingEngine = singleton`
+
+---
+
+### 23. Logger
+
+- **Step 1 — T1:**
+  - Visible: `Message`
+  - Hidden: `LogEvent`, `LogLevel`, `Logger`, `Appender`/`Sink`, `Formatter`, `Filter`
+- **Step 2 — T2:** `Appender`/`Sink` (output pipe — file/console/network)
+- **Step 3 — T3:** `LogEvent` (level, message, timestamp, source)
+- **Step 4 — Relationships:**
+  - Q1 `Code → LogEvent`
+  - Q2 `LogEvent → Appender` (via `Filter` pipeline)
+  - Q3 `Appender → formatted output`
+  - Q4 `Logger → Appender(s)` (1-N); `Appender → Formatter` (1-1)
+- **Step 5 — Cardinality:**
+  - `Logger ↔ Appender` = 1-N
+  - `Logger ↔ Logger` = 1-N (hierarchical parent/child)
+  - `Appender ↔ Filter` = 1-N
+  - `Appender ↔ Formatter` = 1-1
+  - `LogEvent ↔ LogLevel` = N-1
+  - `Logger ↔ LogEvent` = 1-N
+- **Step 6 — Identity:**
+  - `LogEvent = eventId (A) or implicit (no ID needed)`
+  - `Logger = loggerName (D, hierarchical, e.g., com.foo.Bar)`
+  - `Appender = appenderName (D)`
+  - `Formatter = formatterId (A)`
+  - `Filter = filterId (A)`
+  - `LogLevel = enum {TRACE/DEBUG/INFO/WARN/ERROR}`
+
+---
+
+### 24. Rate Limiter
+
+- **Step 1 — T1:**
+  - Visible: `Request`, `Client`
+  - Hidden: `Bucket`, `Quota`, `Window`, `Rule`
+- **Step 2 — T2:** `Bucket` (per client+rule, holds N tokens)
+- **Step 3 — T3:** `AllowDecision` (with timestamp)
+- **Step 4 — Relationships:**
+  - Q1 `Client → Request`
+  - Q2 `Request → Bucket` (per Client+Rule)
+  - Q3 `Request → AllowDecision`
+  - Q4 `Rule → Bucket(s)` (N-1 governance); `Rule → Window + Quota` (composite)
+- **Step 5 — Cardinality:**
+  - `Client ↔ Bucket` = 1-N (one per rule)
+  - `Rule ↔ Bucket` = 1-N
+  - `Client ↔ Request` = 1-N
+  - `Request ↔ Bucket` = N-1
+  - `Request ↔ AllowDecision` = 1-1
+  - `API ↔ Rule` = N-1 (many APIs share rule)
+  - `Rule ↔ Window` = 1-1
+  - `Rule ↔ Quota` = 1-1
+- **Step 6 — Identity:**
+  - `Client = apiKey (D)` or `IP (D)`
+  - `Request = requestId (A)`
+  - `Bucket = clientId+ruleId (D)`
+  - `Rule = ruleId (A)`
+  - `Window = windowSeconds (D)`
+  - `Quota = maxRequests (D)`
+  - `AllowDecision = requestId (D, 1-1)`
+
+---
+
+### 25. Calendar
+
+- **Step 1 — T1:**
+  - Visible: `User`, `Event`
+  - Hidden: `Calendar`, `Invitee`, `RSVP`, `Recurrence`, `Reminder`
+- **Step 2 — T2:** `Calendar` (date×time grid)
+- **Step 3 — T3:** `Invitee`+`RSVP`, `Reminder` fire
+- **Step 4 — Relationships:**
+  - Q1 `User → Event` (organizes)
+  - Q2 `Event → Calendar slot` (date+time)
+  - Q3 `Event → Reminder(s) + RSVP(s)`
+  - Q4 `User → Calendar`; `Event → Recurrence` (1-1)
+- **Step 5 — Cardinality:**
+  - `User ↔ Calendar` = 1-N (multiple calendars)
+  - `Calendar ↔ Event` = 1-N
+  - `User ↔ Event` = 1-N organized
+  - `Event ↔ Invitee` = 1-N
+  - `Invitee ↔ RSVP` = 1-1
+  - `User ↔ Event` = N-N attended (via `Invitee`)
+  - `Event ↔ Recurrence` = 1-1 (optional)
+  - `Event ↔ Reminder` = 1-N per user
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `Calendar = calendarId (A)`
+  - `Event = eventId (A)`
+  - `Invitee = eventId+userId (D)`
+  - `RSVP = eventId+userId (D)` or `enum status`
+  - `Recurrence = eventId (D, 1-1)`
+  - `Reminder = eventId+userId+offsetMin (D)`
+
+---
+
+### 26. Music Streaming (Spotify)
+
+- **Step 1 — T1:**
+  - Visible: `User`, `Song`, `Artist`
+  - Hidden: `Playlist`, `PlayEvent`, `Subscription`, `Album`, `Recommendation`
+- **Step 2 — T2:** `Playlist` (ordered slot list)
+- **Step 3 — T3:** `PlayEvent`; subscription state: `Subscription`
+- **Step 4 — Relationships:**
+  - Q1 `User → PlayEvent` (owns)
+  - Q2 `PlayEvent → Song` (in Playlist)
+  - Q3 `PlayEvent → contributes to Recommendation`
+  - Q4 `User → Playlist → Song(s)` (N-N via join); `Artist → Album → Song`
+- **Step 5 — Cardinality:**
+  - `Artist ↔ Album` = 1-N
+  - `Album ↔ Song` = 1-N
+  - `Artist ↔ Song` = N-N (collaborations)
+  - `User ↔ Playlist` = 1-N
+  - `Playlist ↔ Song` = N-N ordered
+  - `User ↔ PlayEvent` = 1-N
+  - `Song ↔ PlayEvent` = 1-N
+  - `User ↔ Subscription` = 1-1 active
+  - `User ↔ Recommendation` = 1-N
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `Song = songId (A)`
+  - `Artist = artistId (A)`
+  - `Album = albumId (A)`
+  - `Playlist = playlistId (A)`
+  - `PlayEvent = eventId (A)`
+  - `Subscription = userId (D, 1-1)` or `subscriptionId (A)`
+  - `Recommendation = userId+songId (D)`
+
+---
+
+### 27. Video Streaming (Netflix)
+
+- **Step 1 — T1:**
+  - Visible: `User`, `Video`
+  - Hidden: `Show`, `Season`, `Episode`, `Subscription`, `WatchHistory`, `Profile`, `Recommendation`
+- **Step 2 — T2:** `Episode` slot in `Season`/`Show`
+- **Step 3 — T3:** `WatchHistory` (with resume position); state: `Subscription`
+- **Step 4 — Relationships:**
+  - Q1 `User → WatchHistory entry` (owns)
+  - Q2 `WatchHistory → Episode` (in Season/Show)
+  - Q3 `WatchHistory → resume position`
+  - Q4 `Show → Season → Episode` (composition tree)
+- **Step 5 — Cardinality:**
+  - `Show ↔ Season` = 1-N
+  - `Season ↔ Episode` = 1-N
+  - `User ↔ Profile` = 1-N (multi-profile)
+  - `Profile ↔ WatchHistory` = 1-N (one per video)
+  - `Video ↔ WatchHistory` = 1-N
+  - `User ↔ Subscription` = 1-1 active
+  - `Profile ↔ Recommendation` = 1-N
+- **Step 6 — Identity:**
+  - `User = userId (A)`
+  - `Profile = userId+profileNum (D)`
+  - `Video = videoId (A)`
+  - `Show = showId (A)`
+  - `Season = showId+seasonNum (D)`
+  - `Episode = showId+seasonNum+epNum (D)`
+  - `WatchHistory = profileId+videoId (D)`
+  - `Subscription = userId (D, 1-1)`
+  - `Recommendation = profileId+videoId (D)`
+
+---
+
+### 28. Airbnb
+
+- **Step 1 — T1:**
+  - Visible: `Host`, `Guest`, `Listing`
+  - Hidden: `Booking`, `Review`, `Pricing`, `Availability`, `Payment`
+- **Step 2 — T2:** `Listing` per date (availability calendar)
+- **Step 3 — T3:** `Booking`; terminal: `Payment`, `Review` (×2)
+- **Step 4 — Relationships:**
+  - Q1 `Guest → Booking` (owns)
+  - Q2 `Booking → Listing` (per date range)
+  - Q3 `Booking → Payment + Review(s)`
+  - Q4 `Host → Listing(s)` (1-N)
+- **Step 5 — Cardinality:**
+  - `Host ↔ Listing` = 1-N
+  - `Guest ↔ Booking` = 1-N
+  - `Listing ↔ Booking` = **1-N over time, non-overlapping per date**
+  - `Booking ↔ Payment` = 1-1
+  - `Booking ↔ Review` = 1-2 (guest + host)
+  - `Listing ↔ Pricing` = 1-N (date-based)
+  - `Listing ↔ Availability` = 1-N (date-based calendar)
+- **Step 6 — Identity:**
+  - `Host = hostId (A)`
+  - `Guest = guestId (A)`
+  - `Listing = listingId (A)`
+  - `Booking = bookingId (A)`
+  - `Review = reviewId (A)`
+  - `Payment = paymentId (A)`
+  - `Pricing = listingId+date (D)`
+  - `Availability = listingId+date (D)`
+
+---
+
+### 29. Banking
+
+- **Step 1 — T1:**
+  - Visible: `Customer`, `Account`
+  - Hidden: `Transaction`, `Card`, `Loan`, `Beneficiary`, `Statement`
+- **Step 2 — T2:** `Account`, `Card`
+- **Step 3 — T3:** `Transaction` (debit/credit); terminal: `Statement` entry
+- **Step 4 — Relationships:**
+  - Q1 `Customer → Transaction` (owns)
+  - Q2 `Transaction → Account` (debit/credit)
+  - Q3 `Transaction → Statement entry`
+  - Q4 `Customer → Account → Card` (composition chain)
+- **Step 5 — Cardinality:**
+  - `Customer ↔ Account` = 1-N (or N-N for joint)
+  - `Account ↔ Card` = 1-N
+  - `Account ↔ Transaction` = 1-N (ledger)
+  - `Customer ↔ Loan` = 1-N
+  - `Account ↔ Beneficiary` = 1-N
+  - `Account ↔ Statement` = 1-N (periodic)
+  - `Statement ↔ Transaction` = 1-N
+- **Step 6 — Identity:**
+  - `Customer = customerId (A)`
+  - `Account = accountNumber (A)`
+  - `Card = cardNumber (A)`
+  - `Transaction = txnId (A)`
+  - `Loan = loanId (A)`
+  - `Beneficiary = customerId+accountNumber (D)`
+  - `Statement = accountNumber+period (D)`
 
 ---
 
 ## Quick Reference Card
 
 ```
-┌────────────────────────────────────────────────┐
-│  PILLAR 2 — 4 GATES OF ENTITIES                │
-├────────────────────────────────────────────────┤
-│  G1. NOUNS         → visible + hidden          │
-│  G2. RELATIONSHIPS → who owns whom?            │
-│  G3. CARDINALITY   → 1-1 / 1-N / N-N           │
-│  G4. IDENTITY      → assigned vs derived       │
-├────────────────────────────────────────────────┤
-│  Q-template (≤45s):                            │
-│  "Hidden entities? Ownership? Cardinality?     │
-│   Identity assigned or derived?"               │
-└────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  PILLAR 2 — 6 STEPS (memorize)                       │
+├──────────────────────────────────────────────────────┤
+│  1. T1 STATED       → Visible + Hidden               │
+│  2. T2 CONTAINER    → capacity / position / state    │
+│  3. T3 TRANSACTION  → timestamp / amount / status    │
+│  4. RELATIONSHIPS   → Q1 owns / Q2 occupies          │
+│                       Q3 terminal / Q4 composition   │
+│  5. CARDINALITY     → EVERY pair: 1-1 / 1-N / N-N    │
+│                       ⚠️  active vs historical       │
+│  6. IDENTITY        → EVERY entity: assigned (A)     │
+│                                     vs derived (D)   │
+└──────────────────────────────────────────────────────┘
 ```
+
+## Universal probing pattern (for any new domain not listed)
+
+```
+Q1 (transaction): "When [actor] does X with [thing], do we
+                  record a separate entity for that event?"
+Q2 (metadata):    "Does it carry timestamps, status, amount,
+                  expiry? → join entity."
+Q3 (policy):      "Is there a rule (price, eviction, expiry,
+                  allocation) that varies? → policy entity."
+```
+
+These 3 questions surface ~80% of hidden entities.
 
 ---
 
-## Probing Questions Per Domain (memorize the *shape*, not the words)
+## Common traps (quick recap)
 
-> **How to use:** When the interviewer says "Design X", these are the **exact 3 questions** that uncover the hidden entities for that domain. Each question targets either a *transaction*, *metadata*, or *policy*.
+1. **Entity vs attribute** — if it has its own ID + lifecycle, it's an entity. Else it's an attribute.
+2. **Missing join entity in N-N** — when the relationship carries metadata (issuedAt, amount, status), make it a join entity (`Loan`, `Enrollment`, `Split`).
+3. **Snapshot vs history** — if audit/history matters, you need an event entity (`Move`, `OrderStatusEvent`, `ClickEvent`).
+4. **1-1 active vs 1-N historical** — the #1 missed nuance. Always ask: "many at once, or many over time?"
+5. **Container ≠ building** — it can be `Conversation`, `OrderBook`, `Bucket`, `Group`. Anything with capacity/state.
+6. **Missing entities across steps** — if an entity appears in Step 1/2/3, it MUST appear in Step 6 (identity). Every meaningful pair MUST appear in Step 5 (cardinality). Cross-check before moving on.
 
-### Library
-1. *"When a user borrows a book, do we just flip a flag, or do we record a `Loan` with timestamps and due date?"* → uncovers `Loan`
-2. *"Can a user **reserve** a book that's currently issued, so they're next in queue?"* → uncovers `Reservation`
-3. *"Are late returns penalized? Do we track fines per user?"* → uncovers `Fine`
-
-### Parking Lot
-1. *"When a vehicle enters, do we just assign a slot, or do we issue a `Ticket` that tracks entry/exit time?"* → uncovers `Ticket`
-2. *"Are different slot types priced differently — bike vs car vs truck? Hourly or per-minute?"* → uncovers `RateCard`
-3. *"Is payment in scope? Cash, card, or both? Pre-paid or pay-on-exit?"* → uncovers `Payment`
-
-### Hotel
-1. *"Is `Reservation` a separate entity from `Room`, with check-in/check-out dates and status?"* → uncovers `Reservation`
-2. *"Are rooms grouped by type (Deluxe, Suite) for pricing/availability, or is each room individually priced?"* → uncovers `RoomType`
-3. *"Do we generate an `Invoice` per stay, or just charge once on checkout?"* → uncovers `Invoice`
-
-### Ride-Sharing
-1. *"Is a `RideRequest` (rider taps button) the same entity as a `Trip` (driver accepted), or two separate entities?"* → uncovers `RideRequest` vs `Trip`
-2. *"Does a driver own one vehicle or many? Can they switch vehicles?"* → uncovers `Vehicle` cardinality
-3. *"After the trip, do both rider and driver leave ratings? Is that a separate entity?"* → uncovers `Rating`
-
-### Movie Booking
-1. *"Is `Show` (movie + theatre + time) a separate entity from `Movie`?"* → uncovers `Show`
-2. *"When a user picks a seat but hasn't paid, do we put a temporary `Hold` on it?"* → uncovers `Hold`
-3. *"Is pricing per seat category (Gold/Silver) static, or does it vary by show/time?"* → uncovers `Pricing`
-
-### ATM
-1. *"Does a user have one account or many? Is `Card` separate from `Account`?"* → uncovers `Card` vs `Account`
-2. *"Do we keep a `Session` from card-insert to eject, with multiple operations inside?"* → uncovers `Session`
-3. *"Do we record every `Transaction` with type (withdraw/deposit/balance), amount, timestamp?"* → uncovers `Transaction`
-
-### KV Store
-1. *"Is each key-value pair just a map entry, or do we wrap it in an `Entry` with TTL and metadata?"* → uncovers `Entry`
-2. *"Is eviction (LRU/LFU/TTL) configurable per cache, or hardcoded?"* → uncovers `EvictionPolicy`
-3. *"Do we support snapshots/persistence, or pure in-memory?"* → uncovers `Snapshot`
-
-### URL Shortener
-1. *"Is the short URL bound to an `Owner` (user account), or anonymous?"* → uncovers `Owner`
-2. *"Do we track click analytics — count, timestamp, source?"* → uncovers `ClickEvent`
-3. *"Do short URLs expire? Custom aliases allowed?"* → uncovers `ExpiryPolicy`, `Alias`
-
-### Tic-Tac-Toe
-1. *"Is `Game` a separate entity from `Board`? Can one game span multiple boards (best-of-3)?"* → uncovers `Game`
-2. *"Do we record each `Move` with player, position, timestamp — or just mutate the board?"* → uncovers `Move`
-3. *"Do we persist `GameResult` (winner, loser, draw) for history/leaderboard?"* → uncovers `GameResult`
-
-### Online Learning
-1. *"When a student joins a course, do we record an `Enrollment` with date, status, payment ref?"* → uncovers `Enrollment`
-2. *"Do we track lesson-level `Progress` (% complete, last position) per student?"* → uncovers `Progress`
-3. *"Are quizzes/assignments separate entities from lessons? Do we issue certificates?"* → uncovers `Quiz`, `Certificate`
-
-### Twitter/X
-1. *"Is `Follow` a separate entity (with timestamp), or just an edge in a graph?"* → uncovers `Follow`
-2. *"Is `Feed` (the timeline shown to a user) computed on read, or stored as an entity per user?"* → uncovers `Feed` / `Timeline`
-3. *"Are `Like`, `Retweet`, `Reply` separate entities, or attributes on `Tweet`?"* → uncovers engagement entities
-
-### Food Delivery
-1. *"When a customer places an order, is `Cart` a separate entity from `Order`, or do we promote cart → order on checkout?"* → uncovers `Cart` vs `Order`
-2. *"Do we record every status change (PLACED → PREPARED → PICKED_UP → DELIVERED) as an event, or just a single status field?"* → uncovers `OrderStatusEvent`
-3. *"Is `DeliveryAgent` a separate actor with assignment logic, or just a field on the order?"* → uncovers `DeliveryAgent`
-
-### E-commerce / Cart
-1. *"Is `Cart` persisted across sessions, and how does it become an `Order`?"* → uncovers `Cart` vs `Order`
-2. *"Do we track `Inventory` per product per warehouse, or just a global stock count?"* → uncovers `Inventory`
-3. *"Are discounts/coupons separate entities with rules, or hardcoded?"* → uncovers `Discount`
-
-### Chess
-1. *"Do we record each `Move` (from-to-piece-timestamp), or just mutate the board?"* → uncovers `Move`
-2. *"Is move validation a separate component (per-piece rules), or inline in `Game`?"* → uncovers `MoveValidator`
-3. *"Do we track game clock per player (timed games)?"* → uncovers `Clock`
-
-### Snake & Ladder
-1. *"Are `Snake` and `Ladder` separate entities mapped to board cells, or just attributes on cells?"* → uncovers `Snake`, `Ladder`
-2. *"Do we record every dice roll + resulting move for replay, or just current position?"* → uncovers `MoveResult`
-3. *"Is `Game` separate from `Board` (multi-game with same board)?"* → uncovers `Game`
-
-### Elevator
-1. *"Is a button press a transient event, or do we persist it as a `Request` until served?"* → uncovers `Request`
-2. *"Is the dispatch policy (nearest-elevator, SCAN, LOOK) pluggable?"* → uncovers `DispatchPolicy`
-3. *"Does each elevator have a state (IDLE/MOVING_UP/MOVING_DOWN/MAINTENANCE)?"* → uncovers `ElevatorState`
-
-### Vending Machine
-1. *"Is `Inventory` per slot (slot → item + count), or a global pool?"* → uncovers `Slot`, `Inventory`
-2. *"Do we record each purchase as a `Transaction` with item, amount, timestamp?"* → uncovers `Transaction`
-3. *"How do we handle refunds/insufficient-change — separate `Refund` entity?"* → uncovers `Refund`
-
-### Splitwise
-1. *"When an `Expense` is added, do we materialize per-person `Split` entities, or compute splits on the fly?"* → uncovers `Split`
-2. *"Do we track running `Balance` per (user, user) pair, or compute from all expenses each time?"* → uncovers `Balance`
-3. *"Is `Settlement` (one user pays another to clear debt) a separate entity from `Expense`?"* → uncovers `Settlement`
-
-### Notification System
-1. *"Is `Channel` (email/SMS/push) an entity with config, or hardcoded?"* → uncovers `Channel`
-2. *"Do users `Subscribe` to topics? Is subscription per-channel?"* → uncovers `Subscription`
-3. *"Do we track each `DeliveryAttempt` (success/fail/retry) for audit?"* → uncovers `DeliveryAttempt`
-
-### Chat / Messaging
-1. *"Is `Conversation` a separate entity from `Message`, holding participants and metadata?"* → uncovers `Conversation`
-2. *"Do we track per-user `ReadReceipt` per message?"* → uncovers `ReadReceipt`
-3. *"Are `Attachment`s separate entities (with storage refs) or inline blobs?"* → uncovers `Attachment`
-
-### File Storage (Dropbox)
-1. *"Do we keep file `Version` history, or overwrite on update?"* → uncovers `Version`
-2. *"Is sharing modeled as `ShareLink` + `Permission`, or just a flag on the file?"* → uncovers `ShareLink`, `Permission`
-3. *"Do we track per-user `Quota` (storage limit)?"* → uncovers `Quota`
-
-### Stock Exchange
-1. *"Is `OrderBook` (buy/sell queues per stock) a separate entity from `Stock`?"* → uncovers `OrderBook`
-2. *"When two orders match, do we record a `Trade` entity (separate from the orders)?"* → uncovers `Trade`
-3. *"Do we track per-user `Portfolio`/`Position` (stock → quantity)?"* → uncovers `Portfolio`
-
-### Logger
-1. *"Is each log call a `LogEvent` (level, message, timestamp, source)?"* → uncovers `LogEvent`
-2. *"Are `Appender`s/`Sink`s pluggable (file, console, network)?"* → uncovers `Appender`
-3. *"Do we support `Filter`s (level threshold, regex, sampling)?"* → uncovers `Filter`
-
-### Rate Limiter
-1. *"Is the limit per-user, per-IP, or per-API-key — and is `Bucket` a per-client entity?"* → uncovers `Bucket`
-2. *"Is the algorithm (token bucket / fixed window / sliding window) pluggable?"* → uncovers algorithm policy
-3. *"Are different APIs governed by different `Rule`s (quota, refill rate)?"* → uncovers `Rule`
-
-### Calendar
-1. *"Is `Event` shared across multiple users (invitees), or owned by one?"* → uncovers `Invitee`, `RSVP`
-2. *"Do recurring events store one `Recurrence` rule, or N expanded events?"* → uncovers `Recurrence`
-3. *"Is `Reminder` a separate entity per event per user?"* → uncovers `Reminder`
-
-### Music Streaming
-1. *"Are `Playlist`s user-owned entities, or just collections of song IDs?"* → uncovers `Playlist`
-2. *"Do we record every `PlayEvent` (user, song, timestamp) for recommendations?"* → uncovers `PlayEvent`
-3. *"Is `Subscription` (free/premium/family) a separate entity governing access?"* → uncovers `Subscription`
-
-### Video Streaming (Netflix)
-1. *"Is per-user `WatchHistory` (with resume position) tracked per video?"* → uncovers `WatchHistory`
-2. *"Are `Episode` and `Season` separate entities under a `Show`?"* → uncovers `Episode`, `Season`
-3. *"Is `Subscription` separate from `User`, with plan tier and device limit?"* → uncovers `Subscription`
-
-### Airbnb
-1. *"Is `Booking` separate from `Listing`, with check-in/check-out and status?"* → uncovers `Booking`
-2. *"Is `Pricing` per listing per night, or does it vary by date (peak/off-peak)?"* → uncovers `Pricing`, `Availability`
-3. *"Are `Review`s left by both guest and host, as separate entities?"* → uncovers `Review`
-
-### Banking
-1. *"Is each `Account` linked to one customer or many (joint accounts)?"* → uncovers ownership cardinality
-2. *"Do we record every `Transaction` (debit/credit/transfer) with reference to source/dest accounts?"* → uncovers `Transaction`
-3. *"Are `Card`, `Loan`, `Beneficiary` separate entities tied to an account?"* → uncovers `Card`, `Loan`, `Beneficiary`
-
----
-
-### The universal probing pattern (works on any new domain)
-
-If the domain isn't listed above, fall back to **these 3 universal questions**:
-
-```
-Q1 (transaction): "When [actor A] does X with [entity B], 
-                  do we record a separate entity capturing that event?"
-
-Q2 (metadata):    "Does that interaction carry timestamps, status, 
-                  amount, or expiry? If yes → it's a join entity."
-
-Q3 (policy):      "Is there a rule (price, eviction, expiry, allocation) 
-                  that varies? If yes → it's a policy entity."
-```
-
-These 3 questions surface 80% of hidden entities in any LLD problem.
-
----
