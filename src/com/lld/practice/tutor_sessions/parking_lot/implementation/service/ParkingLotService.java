@@ -13,8 +13,6 @@ public interface ParkingLotService {
 
     void exit(String ticketId);                // PAID → EXITED, releases slot
 
-    Slot findFreeSlot(SlotType slotType);                       // helper (package-private also fine)
-
     Ticket reportLost(String ticketId);          // ISSUED → LOST
 
     Ticket payLostTicketPenalty(String ticketId);

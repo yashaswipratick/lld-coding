@@ -1,6 +1,6 @@
-package com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.impl;
+package com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.pricing.impl;
 
-import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.PricingStrategy;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.pricing.PricingStrategy;
 import com.lld.practice.tutor_sessions.parking_lot.implementation.model.Ticket;
 import com.lld.practice.tutor_sessions.parking_lot.implementation.model.VehicleType;
 
@@ -19,9 +19,9 @@ public class FlatHourlyPricingStrategy implements PricingStrategy {
 
     @Override
     public double calculateFee(Ticket ticket) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime exitTime = ticket.getExit() != null ? ticket.getExit() : LocalDateTime.now();
         long hours = Math.max(1, (long) Math.ceil(
-                Duration.between(ticket.getEntry(), now).toMinutes() / 60.0));
+                Duration.between(ticket.getEntry(), exitTime).toMinutes() / 60.0));
         Double rate = pricing.get(ticket.getVehicleType());
         if (rate == null) throw new IllegalArgumentException("No rate for: " + ticket.getVehicleType());
         return hours * rate;

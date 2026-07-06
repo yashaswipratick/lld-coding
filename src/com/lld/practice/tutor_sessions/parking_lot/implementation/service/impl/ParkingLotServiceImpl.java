@@ -3,13 +3,18 @@ package com.lld.practice.tutor_sessions.parking_lot.implementation.service.impl;
 import com.lld.practice.tutor_sessions.parking_lot.design_patterns.factory.ticket.TicketFactory;
 import com.lld.practice.tutor_sessions.parking_lot.design_patterns.factory.vehicle.Vehicle;
 import com.lld.practice.tutor_sessions.parking_lot.design_patterns.factory.vehicle.VehicleFactory;
-import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.PricingStrategy;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.allocator.SlotAllocator;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.allocator.impl.FirstAvailableAllocator;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.pricing.PricingStrategy;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.pricing.impl.FlatHourlyPricingStrategy;
 import com.lld.practice.tutor_sessions.parking_lot.implementation.model.*;
 import com.lld.practice.tutor_sessions.parking_lot.implementation.service.ParkingLotService;
 
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static java.time.LocalDateTime.now;
 
@@ -23,14 +28,23 @@ public class ParkingLotServiceImpl implements ParkingLotService {
     private final Map<VehicleType, SlotType> vehicleToSlot = new EnumMap<>(VehicleType.class);
 
     private final PricingStrategy pricingStrategy;
+    private final SlotAllocator slotAllocator;
+
+    /**
+     * Convenience constructor: defaults to FlatHourlyPricingStrategy.
+     */
+    public ParkingLotServiceImpl(ParkingLot parkingLot) {
+        this(parkingLot, new FlatHourlyPricingStrategy(), new FirstAvailableAllocator());
+    }
 
     /**
      * Primary constructor: accepts a fully-built ParkingLot (with floors and typed slots).
      * The flat slotsByNumber map is built by flattening all floors — used for O(1) slot lookup.
      */
-    public ParkingLotServiceImpl(ParkingLot parkingLot, PricingStrategy pricingStrategy) {
+    public ParkingLotServiceImpl(ParkingLot parkingLot, PricingStrategy pricingStrategy, SlotAllocator slotAllocator) {
         this.parkingLot = parkingLot;
         this.pricingStrategy = pricingStrategy;
+        this.slotAllocator = slotAllocator;
         // flatten ParkingLot → Floor → Slot into the lookup map
         parkingLot.getFloor().forEach(floor ->
                 floor.getSlot().forEach(slot -> slotsByNumber.put(slot.getSlotNumber(), slot)));
@@ -107,25 +121,14 @@ public class ParkingLotServiceImpl implements ParkingLotService {
         return t;
     }
 
-    /**
-     * Iterates ParkingLot → Floor → Slot to find the first free slot of the given type.
-     * Floor-order traversal means lower floors are preferred (natural fairness).
-     */
-    @Override
-    public Slot findFreeSlot(SlotType slotType) {
-        return parkingLot.getFloor().stream()
-                .flatMap(floor -> floor.getSlot().stream())
-                .filter(s -> s.getStatus() == SlotStatus.FREE && s.getSlotType() == slotType)
-                .findFirst()
-                .orElse(null);
-    }
-
     // ---------- Helpers ----------
 
     private Slot findFreeSlotOrThrow(SlotType slotType) {
-        Slot s = findFreeSlot(slotType);
-        if (s == null) throw new IllegalStateException("Lot full for slotType: " + slotType);
-        return s;
+        List<Slot> slots = slotsByNumber.values().stream()
+                .filter(s -> s.getStatus() == SlotStatus.FREE && s.getSlotType() == slotType)
+                .collect(Collectors.toList());
+        return slotAllocator.allocate(slots)
+                .orElseThrow(() -> new IllegalStateException("Lot full for slotType: " + slotType));
     }
 
     private Ticket requireTicket(String id) {

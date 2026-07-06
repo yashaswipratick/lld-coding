@@ -3,19 +3,24 @@
 ## Progress
 
 - [x] Stage 1 - MVP
-- [ ] Stage 2 - Types + State Machine (current)
-- [ ] Stage 3 - Policies (Strategy)
+- [x] Stage 2 - Types + State Machine ✅ (22/22 tests pass)
+- [ ] Stage 3 - Policies (Strategy) ← current
 - [ ] Stage 4 - Concurrency
 - [ ] Stage 5 - Failure + Extensibility
 
-## Stage 2 Focus
+## Stage 2 Completed
 
-- Add `VehicleType` and `SlotType`
-- Add compatibility rules (`CAR` -> `CAR_SLOT`, etc.)
-- Extend ticket lifecycle with proper state guards
-- Keep code simple first, then refactor with Factory in Stage 2 end
+- `VehicleType` (CAR, BIKE, TRUCK) + `SlotType` (CAR, BIKE, TRUCK)
+- Compatibility map: `CAR → CAR_SLOT`, `BIKE → BIKE_SLOT`, `TRUCK → TRUCK_SLOT`
+- Multi-floor: `ParkingLot → Floor → Slot` composition tree
+- Per-type hourly rates: BIKE ₹10, CAR ₹20, TRUCK ₹40 (`FlatHourlyPricingStrategy`)
+- `LOST` state: `reportLost()` + `payLostTicketPenalty()` (₹500 flat fee)
+- Factories: `VehicleFactory`, `TicketFactory`
+- All state guards + slot release side-effects working
 
-## Next Step
+## Stage 3 Focus
 
-- Start Stage 2 question flow in `SESSION.md`
+- Pluggable pricing policies (Strategy pattern already stubbed in)
+- Slot allocator strategy (e.g. nearest-floor, EV-priority)
+- Per-type rate configuration at construction time
 
