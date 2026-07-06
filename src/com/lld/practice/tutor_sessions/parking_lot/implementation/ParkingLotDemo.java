@@ -1,5 +1,9 @@
 package com.lld.practice.tutor_sessions.parking_lot.implementation;
 
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.decorator.SurgePricingDecorator;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.allocator.impl.FirstAvailableAllocator;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.allocator.impl.NearestEntranceAllocator;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.pricing.impl.FlatHourlyPricingStrategy;
 import com.lld.practice.tutor_sessions.parking_lot.implementation.model.*;
 import com.lld.practice.tutor_sessions.parking_lot.implementation.service.ParkingLotService;
 import com.lld.practice.tutor_sessions.parking_lot.implementation.service.impl.ParkingLotServiceImpl;
@@ -27,6 +31,8 @@ public class ParkingLotDemo {
         exit_throws_forUnknownTicket();
         lostTicket_fullFlow();
         lostTicket_cannotPayNormallyAfterReportLost();
+        surge_pricing_chargesMultiplier();
+        nearestEntrance_picksLowestSlotNumber();
 
         System.out.println("\n=== Results: " + passed + " passed, " + failed + " failed ===");
         if (failed > 0) System.exit(1);
@@ -156,6 +162,38 @@ public class ParkingLotDemo {
     }
 
     // ---------- tiny assert helpers ----------
+
+    static void surge_pricing_chargesMultiplier() {
+        List<Slot> f1Slots = new java.util.ArrayList<>();
+        for (int i = 1; i <= 2; i++) f1Slots.add(new Slot(i, SlotStatus.FREE, SlotType.CAR));
+        ParkingLot lot = new ParkingLot("LOT-SURGE", Arrays.asList(new Floor(1, f1Slots)));
+
+        ParkingLotService svc = new ParkingLotServiceImpl(lot,
+                new SurgePricingDecorator(new FlatHourlyPricingStrategy(), 1.5),
+                new FirstAvailableAllocator());
+
+        Ticket t = svc.entry("SURGE-CAR", VehicleType.CAR);
+        Ticket paid = svc.pay(t.getTicketId());
+        // min 1 hr × ₹20 × 1.5 = ₹30
+        expect("surge pricing charges 1.5x multiplier", paid.getFee() >= 30.0);
+    }
+
+    static void nearestEntrance_picksLowestSlotNumber() {
+        List<Slot> f1Slots = new java.util.ArrayList<>();
+        // Add slots in reverse order to ensure allocator sorts correctly
+        f1Slots.add(new Slot(5, SlotStatus.FREE, SlotType.CAR));
+        f1Slots.add(new Slot(3, SlotStatus.FREE, SlotType.CAR));
+        f1Slots.add(new Slot(1, SlotStatus.FREE, SlotType.CAR));
+        ParkingLot lot = new ParkingLot("LOT-NEAREST", Arrays.asList(new Floor(1, f1Slots)));
+
+        ParkingLotService svc = new ParkingLotServiceImpl(lot,
+                new FlatHourlyPricingStrategy(),
+                new NearestEntranceAllocator());
+
+        Ticket t = svc.entry("NEAR-CAR", VehicleType.CAR);
+        expect("nearest entrance picks slot 1", t.getSlotNumber() == 1);
+    }
+
 
     static void expect(String name, boolean cond) {
         if (cond) { System.out.println("PASS: " + name); passed++; }
