@@ -1,16 +1,15 @@
-package com.lld.practice.tutor_sessions.parking_lot.stage_1_mvp.model;
+package com.lld.practice.tutor_sessions.parking_lot.implementation.model;
 
 public class Slot {
 
     private Integer slotNumber;
     private SlotStatus status;
+    private SlotType slotType;
 
-    public Slot() {
-    }
-
-    public Slot(Integer slotNumber, SlotStatus status) {
+    public Slot(Integer slotNumber, SlotStatus status, SlotType slotType) {
         this.slotNumber = slotNumber;
         this.status = status;
+        this.slotType = slotType;
     }
 
     public Integer getSlotNumber() {
@@ -29,11 +28,20 @@ public class Slot {
         this.status = status;
     }
 
+    public SlotType getSlotType() {
+        return slotType;
+    }
+
+    public void setSlotType(SlotType slotType) {
+        this.slotType = slotType;
+    }
+
     @Override
     public String toString() {
         return "Slot{" +
                 "slotNumber=" + slotNumber +
                 ", status=" + status +
+                ", slotType=" + slotType +
                 '}';
     }
 }

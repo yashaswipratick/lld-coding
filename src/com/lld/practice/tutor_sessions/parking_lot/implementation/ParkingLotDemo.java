@@ -1,8 +1,8 @@
-package com.lld.practice.tutor_sessions.parking_lot.stage_1_mvp;
+package com.lld.practice.tutor_sessions.parking_lot.implementation;
 
-import com.lld.practice.tutor_sessions.parking_lot.stage_1_mvp.model.Ticket;
-import com.lld.practice.tutor_sessions.parking_lot.stage_1_mvp.service.ParkingLotService;
-import com.lld.practice.tutor_sessions.parking_lot.stage_1_mvp.service.impl.ParkingLotServiceImpl;
+import com.lld.practice.tutor_sessions.parking_lot.implementation.model.Ticket;
+import com.lld.practice.tutor_sessions.parking_lot.implementation.service.ParkingLotService;
+import com.lld.practice.tutor_sessions.parking_lot.implementation.service.impl.ParkingLotServiceImpl;
 
 /**
  * Stage 1 MVP demo — asserts happy path + every guard.
@@ -38,7 +38,7 @@ public class ParkingLotDemo {
 
         Ticket paid = svc.pay(t.getTicketId());
         expect("pay -> PAID", "PAID".equals(paid.getStatus().name()));
-        expect("pay computes fee (min 1 hour)", paid.getFee() != null && paid.getFee() >= 100.0);
+        expect("pay computes fee (min 1 hour)", paid.getFee() >= 100.0);
 
         svc.exit(t.getTicketId());
         expect("exit -> EXITED", "EXITED".equals(t.getStatus().name()));

@@ -8,6 +8,7 @@
 parking_lot/
 ├── README.md           ← this file
 ├── SESSION.md          ← Q&A log (tutor questions, your answers, ideal answers)
+├── status.md           ← stage progress tracker (Stage 2 now added)
 ├── stage_1_mvp/        ← happy path: 1 lot, 1 vehicle type, no money
 ├── stage_2_types/      ← + vehicle/slot types, ticket state machine
 ├── stage_3_policies/   ← + pricing / allocator Strategy
@@ -17,10 +18,11 @@ parking_lot/
 
 ## Flow per stage
 
-1. Read tutor question in `SESSION.md` → write your answer.
-2. I post the ideal answer + tradeoffs.
-3. You code skeleton in `stage_N_*/` (Java).
-4. Review → next stage.
+1. Check stage state in `status.md`.
+2. Read tutor question in `SESSION.md` → write your answer.
+3. I post the ideal answer + tradeoffs.
+4. You code skeleton in `stage_N_*/` (Java).
+5. Review → next stage.
 
 ## Patterns tracker (filled as we go)
 
@@ -29,4 +31,3 @@ parking_lot/
 - [ ] Stage 3 — Strategy, Decorator
 - [ ] Stage 4 — CAS / per-key lock, idempotency dedup, Singleton registry
 - [ ] Stage 5 — Observer, Saga / sweeper, Open-Closed extension
-

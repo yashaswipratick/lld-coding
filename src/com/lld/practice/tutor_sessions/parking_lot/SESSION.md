@@ -151,3 +151,47 @@ stage1/
 
 Once you code it, paste the file paths here (or say "done") and I'll review — then we jump to **Stage 2** where we add vehicle types + floors + the state machine gets tested by new edge cases.
 
+---
+
+# 🚀 STAGE 2 — Real Domain: Multiple Vehicle Types + Multi-Floor + Richer Lifecycle
+
+**What changes from Stage 1:**
+
+The interviewer just added complexity. New requirements layered on top of MVP:
+
+1. **Multiple vehicle types:** `CAR`, `BIKE`, `TRUCK` (and easy to add more later — e.g., `EV`).
+2. **Multiple slot types:** `CAR_SLOT`, `BIKE_SLOT`, `TRUCK_SLOT` — a vehicle can only park in a compatible slot.
+   - Simple rule for now: `CAR → CAR_SLOT`, `BIKE → BIKE_SLOT`, `TRUCK → TRUCK_SLOT` (strict 1-1 mapping).
+   - (In interviews they often extend to "bike can fit in car slot" — we'll handle that as a *what-if* later.)
+3. **Multi-floor lot:** `ParkingLot → Floor → Slot` (composition tree). Slots are organized per floor, not a flat list.
+4. **Per-type hourly rate:** different rate per vehicle type (e.g., BIKE ₹10/hr, CAR ₹20/hr, TRUCK ₹40/hr). Still flat hourly — no surge/tiered yet (that's Stage 3).
+5. **Richer ticket lifecycle:** add `LOST` state — driver lost the ticket at exit; pay penalty flat fee to exit.
+
+**What we're NOT adding yet (deferred):**
+- ❌ Pluggable pricing strategy (Stage 3)
+- ❌ Pluggable slot allocator (Stage 3)
+- ❌ Concurrency / thread safety (Stage 4)
+- ❌ Payment as separate entity, refunds (Stage 5)
+
+**Patterns you'll likely reach for in Stage 2:**
+- **Enum** for `VehicleType`, `SlotType` (obvious)
+- **Composition** for `ParkingLot → Floor → Slot`
+- Maybe a **compatibility map** (`Map<VehicleType, SlotType>`) — resist over-engineering with Factory here; save it for when it *actually* pays off.
+
+---
+
+## Pillar 1 — SCOPE (Stage 2 extension)
+
+### Q2.1: Do any of your Stage-1 operations change *signatures* now that we have vehicle types and floors? Which ops stay the same, which ones need new params, and are any new ops needed?
+
+**Hint:** Look at each Stage-1 op — `entry`, `pay`, `exit`, `findFreeSlot` — and ask: "does the caller need to give me new info?" Also think: do we need an admin op to configure per-type rates, or is it fine as a config passed at construction?
+
+**Your answer:**
+_(fill in)_
+ - entry/exit/findFreeSlot/ needs new param Vehicle Type
+ - price rate can be stored in Hashmap according to Vehicle Types
+ - LOST fee can have flat rates which can be used for calculation
+
+
+**Feedback:**
+_(after you answer)_

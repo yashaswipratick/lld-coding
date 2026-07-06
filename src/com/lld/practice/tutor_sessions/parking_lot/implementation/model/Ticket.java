@@ -1,4 +1,4 @@
-package com.lld.practice.tutor_sessions.parking_lot.stage_1_mvp.model;
+package com.lld.practice.tutor_sessions.parking_lot.implementation.model;
 
 import java.time.LocalDateTime;
 
@@ -9,13 +9,14 @@ public class Ticket {
     private Integer slotNumber;
     private LocalDateTime entry;
     private LocalDateTime exit;
-    private Double fee;
+    private double fee;
     private TicketStatus status;
+    private VehicleType vehicleType;
 
     public Ticket() {
     }
 
-    public Ticket(String ticketId, String licensePlateNumber, Integer slotNumber, LocalDateTime entry, LocalDateTime exit, Double fee, TicketStatus status) {
+    public Ticket(String ticketId, String licensePlateNumber, Integer slotNumber, LocalDateTime entry, LocalDateTime exit, Double fee, TicketStatus status, VehicleType vehicleType) {
         this.ticketId = ticketId;
         this.licensePlateNumber = licensePlateNumber;
         this.slotNumber = slotNumber;
@@ -23,6 +24,7 @@ public class Ticket {
         this.exit = exit;
         this.fee = fee;
         this.status = status;
+        this.vehicleType = vehicleType;
     }
 
     public String getTicketId() {
@@ -65,11 +67,11 @@ public class Ticket {
         this.exit = exit;
     }
 
-    public Double getFee() {
+    public double getFee() {
         return fee;
     }
 
-    public void setFee(Double fee) {
+    public void setFee(double fee) {
         this.fee = fee;
     }
 
@@ -79,6 +81,14 @@ public class Ticket {
 
     public void setStatus(TicketStatus status) {
         this.status = status;
+    }
+
+    public VehicleType getVehicleType() {
+        return vehicleType;
+    }
+
+    public void setVehicleType(VehicleType vehicleType) {
+        this.vehicleType = vehicleType;
     }
 
     @Override
@@ -91,6 +101,7 @@ public class Ticket {
                 ", exit=" + exit +
                 ", fee=" + fee +
                 ", status=" + status +
+                ", vehicleType=" + vehicleType +
                 '}';
     }
 }
