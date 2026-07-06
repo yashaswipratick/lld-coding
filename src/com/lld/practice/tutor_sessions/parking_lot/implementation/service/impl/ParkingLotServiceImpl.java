@@ -1,45 +1,40 @@
 package com.lld.practice.tutor_sessions.parking_lot.implementation.service.impl;
 
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.factory.ticket.TicketFactory;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.factory.vehicle.Vehicle;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.factory.vehicle.VehicleFactory;
+import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.PricingStrategy;
 import com.lld.practice.tutor_sessions.parking_lot.implementation.model.*;
 import com.lld.practice.tutor_sessions.parking_lot.implementation.service.ParkingLotService;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
+
+import static java.time.LocalDateTime.now;
 
 public class ParkingLotServiceImpl implements ParkingLotService {
 
     private static final double LOST_PENALTY = 500.0;
 
+    private final ParkingLot parkingLot;                                   // full hierarchy
     private final Map<String, Ticket> ticketsById = new HashMap<>();
-    private final Map<Integer, Slot> slotsByNumber = new HashMap<>();
+    private final Map<Integer, Slot> slotsByNumber = new HashMap<>();      // flat map for O(1) lookup in exit()
     private final Map<VehicleType, SlotType> vehicleToSlot = new EnumMap<>(VehicleType.class);
-    private final Map<VehicleType, Double> rateMap = new EnumMap<>(VehicleType.class);
 
-    /** Primary constructor: caller specifies how many slots of each type to create. */
-    public ParkingLotServiceImpl(Map<SlotType, Integer> slotCounts) {
+    private final PricingStrategy pricingStrategy;
+
+    /**
+     * Primary constructor: accepts a fully-built ParkingLot (with floors and typed slots).
+     * The flat slotsByNumber map is built by flattening all floors — used for O(1) slot lookup.
+     */
+    public ParkingLotServiceImpl(ParkingLot parkingLot, PricingStrategy pricingStrategy) {
+        this.parkingLot = parkingLot;
+        this.pricingStrategy = pricingStrategy;
+        // flatten ParkingLot → Floor → Slot into the lookup map
+        parkingLot.getFloor().forEach(floor ->
+                floor.getSlot().forEach(slot -> slotsByNumber.put(slot.getSlotNumber(), slot)));
         seedCompatibility();
-        seedRates();
-        seedSlots(slotCounts);
-    }
-
-    /** Convenience: split totalSlots evenly across CAR/BIKE/TRUCK (remainder → CAR). */
-    public ParkingLotServiceImpl(int totalSlots) {
-        this(evenSplit(totalSlots));
-    }
-
-    private static Map<SlotType, Integer> evenSplit(int total) {
-        int each = total / 3;
-        int rem  = total % 3;
-        Map<SlotType, Integer> m = new EnumMap<>(SlotType.class);
-        m.put(SlotType.CAR,   each + rem);
-        m.put(SlotType.BIKE,  each);
-        m.put(SlotType.TRUCK, each);
-        return m;
     }
 
     private void seedCompatibility() {
@@ -48,21 +43,6 @@ public class ParkingLotServiceImpl implements ParkingLotService {
         vehicleToSlot.put(VehicleType.TRUCK, SlotType.TRUCK);
     }
 
-    private void seedRates() {
-        rateMap.put(VehicleType.BIKE,  10.0);
-        rateMap.put(VehicleType.CAR,   20.0);
-        rateMap.put(VehicleType.TRUCK, 40.0);
-    }
-
-    private void seedSlots(Map<SlotType, Integer> counts) {
-        AtomicInteger nextSlotNum = new AtomicInteger(1);
-        counts.forEach((type, count) -> {
-            for (int i = 0; i < count; i++) {
-                int n = nextSlotNum.getAndIncrement();
-                slotsByNumber.put(n, new Slot(n, SlotStatus.FREE, type));
-            }
-        });
-    }
 
     // ---------- Ops ----------
 
@@ -71,21 +51,14 @@ public class ParkingLotServiceImpl implements ParkingLotService {
         if (licensePlate == null) throw new IllegalArgumentException("licensePlate is null");
         if (vehicleType == null)  throw new IllegalArgumentException("vehicleType is null");
 
+        Vehicle vehicle = VehicleFactory.create(vehicleType, licensePlate);
         SlotType needed = vehicleToSlot.get(vehicleType);
         if (needed == null) throw new IllegalArgumentException("Unsupported vehicleType: " + vehicleType);
 
         Slot slot = findFreeSlotOrThrow(needed);
         slot.setStatus(SlotStatus.OCCUPIED);
 
-        Ticket t = new Ticket(
-                UUID.randomUUID().toString(),
-                licensePlate,
-                slot.getSlotNumber(),
-                LocalDateTime.now(),
-                null,               // exit
-                0.0,                // fee (Ticket.fee is primitive double)
-                TicketStatus.ISSUED,
-                vehicleType);
+        Ticket t = TicketFactory.issueTicket(vehicle, slot.getSlotNumber());
         ticketsById.put(t.getTicketId(), t);
         return t;
     }
@@ -96,11 +69,9 @@ public class ParkingLotServiceImpl implements ParkingLotService {
         if (t.getStatus() != TicketStatus.ISSUED)
             throw new IllegalStateException("pay requires ISSUED, was: " + t.getStatus());
 
-        LocalDateTime now = LocalDateTime.now();
-        long hours = Math.max(1, (long) Math.ceil(
-                Duration.between(t.getEntry(), now).toMinutes() / 60.0));
-        t.setFee(hours * rateMap.get(t.getVehicleType()));
-        t.setExit(now);
+
+        t.setExit(now());
+        t.setFee(pricingStrategy.calculateFee(t));
         t.setStatus(TicketStatus.PAID);
         return t;
     }
@@ -131,14 +102,19 @@ public class ParkingLotServiceImpl implements ParkingLotService {
             throw new IllegalStateException("payLostTicketPenalty requires LOST, was: " + t.getStatus());
 
         t.setFee(LOST_PENALTY);
-        t.setExit(LocalDateTime.now());
+        t.setExit(now());
         t.setStatus(TicketStatus.PAID);   // funnels into normal exit() flow
         return t;
     }
 
+    /**
+     * Iterates ParkingLot → Floor → Slot to find the first free slot of the given type.
+     * Floor-order traversal means lower floors are preferred (natural fairness).
+     */
     @Override
     public Slot findFreeSlot(SlotType slotType) {
-        return slotsByNumber.values().stream()
+        return parkingLot.getFloor().stream()
+                .flatMap(floor -> floor.getSlot().stream())
                 .filter(s -> s.getStatus() == SlotStatus.FREE && s.getSlotType() == slotType)
                 .findFirst()
                 .orElse(null);
