@@ -10,6 +10,7 @@ import com.lld.practice.tutor_sessions.parking_lot.design_patterns.strategy.pric
 import com.lld.practice.tutor_sessions.parking_lot.implementation.model.*;
 import com.lld.practice.tutor_sessions.parking_lot.implementation.service.ParkingLotService;
 
+import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -76,11 +77,15 @@ public class ParkingLotServiceImpl implements ParkingLotService {
             if (needed == null) throw new IllegalArgumentException("Unsupported vehicleType: " + vehicleType);
 
             Slot slot = findFreeSlotOrThrow(needed);
-            slot.setStatus(SlotStatus.OCCUPIED);
-
-            Ticket t = TicketFactory.issueTicket(vehicle, slot.getSlotNumber());
-            ticketsById.put(t.getTicketId(), t);
-            return t;
+            slot.setStatus(SlotStatus.OCCUPIED);        // 1 — claim the slot
+            try {
+                Ticket t = TicketFactory.issueTicket(vehicle, slot.getSlotNumber()); // 2
+                ticketsById.put(t.getTicketId(), t);                                  // 3
+                return t;
+            } catch (RuntimeException e) {
+                slot.setStatus(SlotStatus.FREE);         // rollback — release slot on any failure
+                throw e;
+            }
         } finally {
             lock.unlock();
         }
@@ -94,8 +99,11 @@ public class ParkingLotServiceImpl implements ParkingLotService {
             if (t.getStatus() != TicketStatus.ISSUED)
                 throw new IllegalStateException("pay requires ISSUED, was: " + t.getStatus());
 
-            t.setExit(now());
-            t.setFee(pricingStrategy.calculateFee(t));
+            LocalDateTime exitTime = now();                        // step 1 — local var, no mutation yet
+            double fee = pricingStrategy.calculateFee(t);          // step 2 — risky, but ticket untouched
+// ↑ if this throws, ticket is still ISSUED, exitTime=null, fee=0 → clean retry
+            t.setExit(exitTime);                                   // step 3 — only mutate after calc succeeds
+            t.setFee(fee);                                         // step 4
             t.setStatus(TicketStatus.PAID);
             return t;
         } finally {
@@ -140,9 +148,11 @@ public class ParkingLotServiceImpl implements ParkingLotService {
             if (t.getStatus() != TicketStatus.LOST)
                 throw new IllegalStateException("payLostTicketPenalty requires LOST, was: " + t.getStatus());
 
-            t.setFee(LOST_PENALTY);
-            t.setExit(now());
-            t.setStatus(TicketStatus.PAID);
+            LocalDateTime exitTime = now();   // step 1 — local var, no mutation yet
+            double fee = LOST_PENALTY;         // step 2 — flat penalty, always 500, no strategy involved
+            t.setExit(exitTime);               // step 3 — only mutate after all locals computed
+            t.setFee(fee);                     // step 4
+            t.setStatus(TicketStatus.PAID);    // step 5 — point of no return
             return t;
         } finally {
             lock.unlock();
